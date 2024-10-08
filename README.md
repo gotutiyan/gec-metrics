@@ -4,12 +4,14 @@ A library for evaluation of Grammatical Error Correction
 # Install
 ```sh
 pip install git+https://github.com/gotutiyan/gec-metrics
+python -m spacy download en
 ```
 Or,
 ```sh
 git clone git@github.com:gotutiyan/gec-metrics.git
 cd gec-metrics
 pip install -e ./
+python -m spacy download en
 ```
 
 # Common Usage
