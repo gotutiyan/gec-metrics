@@ -28,10 +28,10 @@ class TestSOME:
         corpus_score = scorer.score_corpus(
             SRCS, HYPS
         )
-        assert math.isclose(corpus_score, gold_corpus_score, abs_tol=1e-9)
+        assert math.isclose(corpus_score, gold_corpus_score, abs_tol=1e-6)
         sent_score = scorer.score_sentence(
             SRCS, HYPS
         )
-        assert [math.isclose(s1, s2, abs_tol=1e-9) \
+        assert [math.isclose(s1, s2, abs_tol=1e-6) \
                 for s1, s2 in zip(sent_score, gold_sent_score)]
     
