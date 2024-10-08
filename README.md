@@ -1,2 +1,237 @@
 # gec-metrics
 A library for evaluation of Grammatical Error Correction
+
+# Install
+```sh
+pip install git+https://github.com/gotutiyan/gec-metrics
+```
+Or,
+```sh
+git clone git@github.com:gotutiyan/gec-metrics.git
+cd gec-metrics
+pip install -e ./
+```
+
+# Common Usage
+All metrics has the same interface.  
+This is an GLEU exmaple.
+```python
+from gec_metrics import GLEU
+scorer = GLEU(GLEU.Config())
+srcs = ['This sentences contain grammatical error .']
+hyps = ['This sentence contains an grammatical error .']
+refs = [
+    ['This sentence contains an grammatical error .'],
+    ['This sentence contains grammatical errors .']
+]
+# Corpus-level score
+# If the metric is reference-free, the argument `references=` is not needed.
+corpus_score: float = scorer.score_corpus(
+    sources=srcs,
+    hypotheses=hyps,
+    references=refs
+)
+# Sentence-level scores
+sent_scores: list[float] = scorer.score_sentence(
+    sources=srcs,
+    hypotheses=hyps,
+    references=refs
+)
+```
+
+# Metrics
+
+We introduce which metrics are available.  
+All of arguments in the following examples indicate default values.
+
+## Reference-based
+### M2 
+
+To be added.
+
+###  GLEU+ [[Napoles+ 15]](https://aclanthology.org/P15-2097/) [[Napoles+ 16]](https://arxiv.org/abs/1605.02592)  
+
+```python
+from gec_metrics.metrics import GLEU
+scorer = GLEU(GLEU.Config(
+    iter=500,  # The number of iterations 
+    n=4  # max n-gram
+))
+```
+We also provide a reproduction of the official implementation as GLEUOfficial.  
+The official one ignores ngram frequency differences when calculating the difference set between source and reference.
+```python
+from gec_metrics.metrics import GLEUOfficial
+scorer = GLEUOfficial(GLEUOfficial.Config(
+    iter=500,  # The number of iterations 
+    n=4  # max n-gram
+))
+```
+
+### ERRANT [[Felice+ 16]](https://aclanthology.org/C16-1079/) [[Bryant+ 17]](https://aclanthology.org/P17-1074/)
+```python
+from gec_metrics.metrics import ERRANT
+scorer = ERRANT(ERRANT.Config(
+    beta=0.5,  # The beta for F-beta score
+    language='en'  # Language for SpaCy.
+))
+```
+
+### GoToScorer [[Gotou+ 20]](https://aclanthology.org/2020.coling-main.188/)
+
+To be added.
+
+### PT-M2 [[Gong+ 22]](https://aclanthology.org/2022.emnlp-main.463/)
+
+To be added.
+
+### PT-ERRANT [[Gong+ 22]](https://aclanthology.org/2022.emnlp-main.463/)
+
+To be added.
+
+### CLEME [[Ye+ 23]](https://aclanthology.org/2023.emnlp-main.378/)
+
+To be added.
+
+### GREEN [[Koyama+ 24]](https://aclanthology.org/2024.inlg-main.25/)
+```python
+from gec_metrics.metrics import GREEN
+scorer =GREEN(GREEN.Config(
+    n=4,  # Max n of ngram
+    beta=2.0,  # The beta for F-beta
+    unit='word'  # 'word' or 'char'. Choose word-level or character-level
+))
+```
+
+## Reference-based (without sources)
+
+These metrics are intended to be used for a component of PT-{M2, ERRANT}, but are also exposed for use via the same interface as other metrics.
+
+### BERTScore [[Zhang+ 19]](https://arxiv.org/abs/1904.09675)
+To be added.
+
+### BARTScore [[Yuan+ 21]](https://proceedings.neurips.cc/paper/2021/hash/e4d2b6e6fdeca3e60e0f1a62fee3d9dd-Abstract.html)
+
+To be added.
+
+## Reference-free
+
+### SOME [[Yoshimura+ 20]](https://aclanthology.org/2020.coling-main.573/)  
+Download pre-trained models in advance from [here](https://github.com/kokeman/SOME#:~:text=Download%20trained%20model).
+```python
+from gec_metrics import SOME
+scorer = SOME(SOME.Config(
+    model_g='gfm-models/grammer',
+    model_f='gfm-models/fluency',
+    model_m='gfm-models/meaning',
+    weight_f=0.55,
+    weight_g=0.43,
+    weight_m=0.02,
+    batch_size=2
+))
+```
+### Scribendi [[Islam+ 21]](https://aclanthology.org/2021.emnlp-main.239/)
+```python
+from gec_metrics import Scribendi
+scorer = Scribendi(Scribendi.Config(
+    model_id='gpt2',  # The model name or path to the language model to compute perplexity
+    threshold=0.8  # The threshold for the maximum values of token-sort-ratio and levelshtein distance
+))
+```
+### IMPARA [[Maeda+ 22]](https://aclanthology.org/2022.coling-1.316/)  
+Note that the QE model is an unofficial model but achieves comparable correlation with the human evaluation results.  
+By default, it uses an unofficial pretrained QE model: [[gotutiyan/IMPARA-QE]](https://huggingface.co/gotutiyan/IMPARA-QE).
+```python
+from gec_metrics import IMPARA
+scorer = IMPARA(IMPARA.Config(
+    model_qe='gotutiyan/IMPARA-QE',  # The model name or path for quality estimation.
+    model_se='bert-base-cased',  # The model name or path for similarity estimation.
+    threshold=0.9  # The threshold for the similarity score.
+))
+```
+
+# Meta Evaluation
+To perform meta evaluation easily, we provide meta-evaluation scripts.
+
+### Preparation
+To donwload test data and human scores, you must download datasets by using the shell.
+```sh
+bash prepare_meta_eval.sh
+```
+
+This scripts creates `meta_eval_data/` directory which consists of SEEDA dataset and CoNLL14 official submissions.
+```
+meta_eval_data/
+├── conll14
+│   ├── official_submissions
+│   │   ├── AMU
+│   │   ├── CAMB
+│   │   ├── ...
+│   ├── REF0
+│   └── REF1
+└── SEEDA
+    ├── outputs
+    │   ├── all
+    │   │   ├── ...
+    │   └── subset
+    │       ├── ...
+    ├── scores
+    │   ├── human
+    │   │   ├── ...├── ...
+```
+
+### SEEDA [[Kobayashi+ 24]](https://direct.mit.edu/tacl/article/doi/10.1162/tacl_a_00676/123651/Revisiting-Meta-evaluation-for-Grammatical-Error)
+The examples below uses ERRANT as a metric, but can also use other metrics based on `gec_metrics.metrics.MetricBase`.  
+- `ew_` means using ExpectedWins human evaluation scores and `ts_` means using TrueSkill.
+
+```python
+from gec_metrics.metrics import MetricBase, ERRANT
+from gec_metrics.meta_eval import seeda_system_corr, seeda_sentence_corr
+scorer = ERRANT(ERRANT.Config())
+assert isinstance(scorer, MetricBase)
+# System correlation
+results = seeda_system_corr(scorer)
+# Output:
+# SeedaSystemCorrOutput(ew_sent=Corr(pearson=0.5240277289996839,
+#                                    spearman=0.3706293706293707),
+#                       ew_edit=Corr(pearson=0.6918530009699867,
+#                                    spearman=0.6573426573426573),
+#                       ts_sent=Corr(pearson=0.5451092916942388,
+#                                    spearman=0.3426573426573427),
+#                       ts_edit=Corr(pearson=0.6886654535290525,
+#                                    spearman=0.6433566433566434))
+
+# Sentence correlation
+results = seeda_sentence_corr(scorer)
+# Output:
+# SeedaSentenceCorrOutput(edit=Score(accuracy=0.6081992734820966,
+#                                    kendall=0.21639854696419306),
+#                         sent=Score(accuracy=0.594286323419678,
+#                                    kendall=0.18857264683935615))
+
+```
+
+### Using Grundkiewicz+ 15 [[paper]](https://aclanthology.org/D15-1052/)
+
+This is referred to `GJG15` in the SEEDA paper.  
+Basically, True Skills ranking is used to compute the correlation.
+
+```python
+from gec_metrics.metrics import MetricBase, ERRANT
+from gec_metrics.meta_eval import gjg_system_corr, gjg_sentence_corr
+scorer = ERRANT(ERRANT.Config())
+assert isinstance(scorer, MetricBase)
+# System correlation
+results = gjg_system_corr(scorer)
+# Output:
+# GJGSystemCorrOutput(ew=Corr(pearson=0.6470959069938824,
+#                             spearman=0.6868131868131868),
+#                     ts=Corr(pearson=0.6919316299420801,
+#                             spearman=0.7142857142857143))
+```
+
+# Correlations can be obtained
+
+Using scripts for the metrics and the meta-evaluation in this repository, we performed meta-evaluation.  
+The table below is the result.
+
