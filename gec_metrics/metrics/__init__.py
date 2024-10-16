@@ -10,6 +10,7 @@ from .some import SOME
 from .gleu import GLEU, GLEUOfficial
 from .errant import ERRANT
 from .green import GREEN
+from .gotoscorer import GoToScorer
 
 __all__ = [
     "MetricBase",
@@ -23,4 +24,5 @@ __all__ = [
     "GLEUOfficial",
     "ERRANT",
     "GREEN",
+    "GoToScorer"
 ]
