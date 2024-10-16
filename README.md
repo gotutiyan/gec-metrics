@@ -81,7 +81,24 @@ scorer = ERRANT(ERRANT.Config(
 
 ### GoToScorer [[Gotou+ 20]](https://aclanthology.org/2020.coling-main.188/)
 
-To be added.
+```python
+from gec_metrics.metrics import GoToScorer
+scorer = GoToScorer(GoToScorer.Config(
+    beta=0.5,  # The beta for F-beta score
+    ref_id=0,  # The reference id
+    no_weight=True,  # If False, all weights are 1.0
+    weight_file=None  # It is required if no_weight=False
+))
+```
+You need to generate a weight file via `gen_weight_for_gotoscorer`.  
+The output is JSON file.  
+```sh
+gen_weight_for_gotoscorer \
+    --src <raw text file> \
+    --ref <raw text file> \
+    --hyp <raw text file 1> <raw text file 2> ... <raw text file N> \
+    --out weight.json
+```
 
 ### PT-M2 [[Gong+ 22]](https://aclanthology.org/2022.emnlp-main.463/)
 
@@ -98,7 +115,7 @@ To be added.
 ### GREEN [[Koyama+ 24]](https://aclanthology.org/2024.inlg-main.25/)
 ```python
 from gec_metrics.metrics import GREEN
-scorer =GREEN(GREEN.Config(
+scorer = GREEN(GREEN.Config(
     n=4,  # Max n of ngram
     beta=2.0,  # The beta for F-beta
     unit='word'  # 'word' or 'char'. Choose word-level or character-level
@@ -107,7 +124,7 @@ scorer =GREEN(GREEN.Config(
 
 ## Reference-based (without sources)
 
-These metrics are intended to be used for a component of PT-{M2, ERRANT}, but are also exposed for use via the same interface as other metrics.
+These metrics are intended to be used for a component of PT-{M2, ERRANT}, but are also exposed to API.
 
 ### BERTScore [[Zhang+ 19]](https://arxiv.org/abs/1904.09675)
 To be added.
@@ -121,7 +138,7 @@ To be added.
 ### SOME [[Yoshimura+ 20]](https://aclanthology.org/2020.coling-main.573/)  
 Download pre-trained models in advance from [here](https://github.com/kokeman/SOME#:~:text=Download%20trained%20model).
 ```python
-from gec_metrics import SOME
+from gec_metrics.metrics import SOME
 scorer = SOME(SOME.Config(
     model_g='gfm-models/grammer',
     model_f='gfm-models/fluency',
@@ -134,9 +151,9 @@ scorer = SOME(SOME.Config(
 ```
 ### Scribendi [[Islam+ 21]](https://aclanthology.org/2021.emnlp-main.239/)
 ```python
-from gec_metrics import Scribendi
+from gec_metrics.metrics import Scribendi
 scorer = Scribendi(Scribendi.Config(
-    model_id='gpt2',  # The model name or path to the language model to compute perplexity
+    model='gpt2',  # The model name or path to the language model to compute perplexity
     threshold=0.8  # The threshold for the maximum values of token-sort-ratio and levelshtein distance
 ))
 ```
@@ -144,7 +161,7 @@ scorer = Scribendi(Scribendi.Config(
 Note that the QE model is an unofficial model but achieves comparable correlation with the human evaluation results.  
 By default, it uses an unofficial pretrained QE model: [[gotutiyan/IMPARA-QE]](https://huggingface.co/gotutiyan/IMPARA-QE).
 ```python
-from gec_metrics import IMPARA
+from gec_metrics.metrics import IMPARA
 scorer = IMPARA(IMPARA.Config(
     model_qe='gotutiyan/IMPARA-QE',  # The model name or path for quality estimation.
     model_se='bert-base-cased',  # The model name or path for similarity estimation.
