@@ -37,15 +37,16 @@ class GoToScorer(ERRANT):
     ) -> list[Chunk]:
         '''Generate a chunk sequence given an edit sequence.
             - Tokens included in each edit become a single chunk.
-            - Each token outside of the edits beocome a chunk respectively.
-            - Additionally, dummy chunks will be inserted between all tokens 
+            - Each token outside of the edits becomes a chunk respectively.
+            - Dummy chunks will be inserted between all tokens 
                 to account for possible insertions.
         Args:
             edits (list[errant.edit.Edit]):
                 The edit sequence that can be obtained via errant.annotate()
             tokens (list[str]):
                 The source tokens.
-        Return:
+
+        Returns:
             list[Chunk]: The chunk sequence.
         '''
         chunks = []
@@ -75,9 +76,6 @@ class GoToScorer(ERRANT):
                 ))
             word_id += 1
         if len(edits) > 0 and edits[-1].o_start == len(tokens):
-            # This handles the insertion edit at the end of the sentence.
-            # e.g. SRC='This is a' and TRG='This is a sentence',
-            #   The edit will be like (3, 3, 'sentence').
             chunks.append(self.Chunk(
                 o_start=edits[-1].o_start,
                 o_end=edits[-1].o_end,
@@ -89,13 +87,11 @@ class GoToScorer(ERRANT):
         is_previous_chunk_insertion = False
         new_chunks = []
         for chunk in chunks:
-            # If there is already an insetion chunk.
             if chunk.o_start == chunk.o_end:
                 is_previous_chunk_insertion = True
                 new_chunks.append(chunk)
                 continue
             else:
-                # Otherweise, we insert a dummy chunk.
                 if not is_previous_chunk_insertion:
                     # Insert a dummy chunk.
                     new_chunks.append(self.Chunk(
@@ -123,19 +119,21 @@ class GoToScorer(ERRANT):
         sources: list[str],
         hypotheses: list[str],
         references: list[list[str]]
-    ) -> list[dict[str, "Score"]]:
-        '''We calculate the scores while preserving all boundaries 
-            of the sentences, references, and error types.
+    ) -> list[list[dict[str, "Score"]]]:
+        '''Calculate scores while retaining sentence and reference boundaries.
+            The results can be aggregated according to the purpose,
+                e.g., at sentence-level or corpus-level.
 
         Args:
-            source (list[str]): The source sentences.
-            hypotheses (list[str]): The source sentences.
-            references (list[list[str]]): The references sentences.
-                The shape is (num_references, num_sentences).
-        Return:
-            list[dict[str, "Score"]]: The verbose scores.
-                The list length is the same as the number of sentences.
-                The dict format is {error type: Score()}.
+            sources (list[str]): Source sentence.
+            hypothesis (list[str]): Corrected sentences.
+            references (list[list[str]]): Reference sentences.
+                The shape is (the number of references, the number of sentences).
+        
+        Returns:
+            list[list[dict[str, "Score"]]]: The verbose scores.
+                - The list shape is (num_sents, num_refs)
+                - The dict contains error type-wise scores.
         '''
         num_sents = len(sources)
         num_refs = len(references)
@@ -201,7 +199,8 @@ class GoToScorer(ERRANT):
                 The chunk to be evaluated.
             hyp_chunks (list[Chunk]):
                 The chunk sequence for one GEC systems.
-        Return
+                
+        Returns:
             tuple[bool]: This contains two elements.
                 The first one represents correctness.
                 The second one represents whether the system tried to edit or not.
@@ -237,6 +236,10 @@ class GoToScorer(ERRANT):
                 The chunk sequence.
             tokens (list[str]):
                 The source tokens.
+
+        Returns: None
+        
+        Example:
         ```
             from gec_metrics.metrics.gotoscorer import GoToScorer
             scorer = GoToScorer(GoToScorer.Config(no_weight=True))
@@ -252,7 +255,17 @@ class GoToScorer(ERRANT):
             # |1.0|1.0 |1.0|   1.0   |1.0|  1.0   |1.0|    1.0    |1.0| 1.0 |1.0|1.0|1.0|
         ```
         '''
-        def insert_space(w, n):
+        def insert_space(w: str, n: int):
+            '''Insert space for the visualization.
+                Put spaces evenly on both sides of the string.
+            
+            Args:
+                w (str): strings
+                n (int): max length
+            
+            Returns:
+                str: The string after inseting the spaces.
+            '''
             if len(w) < n:
                 offset = n - len(w)
                 w = ' '*(offset//2) + w + ' '*(offset - offset//2)

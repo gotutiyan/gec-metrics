@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from .base import MetricBaseForReferenceBased, MetricBase
 import hashlib
 import errant
+import spacy
 
 class ERRANT(MetricBaseForReferenceBased):
     @dataclass
@@ -12,18 +13,34 @@ class ERRANT(MetricBaseForReferenceBased):
     def __init__(self, config: Config):
         super().__init__(config)
         self.errant = errant.load(config.language)
-        self.cache_paarse = dict()
+        self.cache_parse = dict()
         self.cache_annotate = dict()
 
-    def cached_parse(self, sent: str):
-        '''Efficient parse() by caching'''
+    def cached_parse(self, sent: str) -> spacy.tokens.doc.Doc:
+        '''Efficient parse() by caching.
+        
+        Args:
+            sent (str): The sentence to be parsed.
+        Return:
+            spacy.tokens.doc.Doc: The parse results. 
+        '''
         key = hashlib.sha256(sent.encode()).hexdigest()
-        if self.cache_paarse.get(key) is None:
-            self.cache_paarse[key] = self.errant.parse(sent)
-        return self.cache_paarse[key]
+        if self.cache_parse.get(key) is None:
+            self.cache_parse[key] = self.errant.parse(sent)
+        return self.cache_parse[key]
     
-    def edit_extraction(self, src: str, trg: str):
-        '''Extract edits given a source and a corrected.'''
+    def edit_extraction(
+        self, src: str, trg: str
+    ) -> list[errant.edit.Edit]:
+        '''Extract edits given a source and a corrected.
+
+        Args:
+            src (str): The source sentence.
+            trg (str): The corrected sentence.
+        
+        Returns:
+            list[errant.edit.Edit]: Extracted edits.
+        '''
         key = hashlib.sha256((src + '|||' + trg).encode()).hexdigest()
         if self.cache_annotate.get(key) is None:
             self.cache_annotate[key] = self.errant.annotate(
@@ -32,11 +49,22 @@ class ERRANT(MetricBaseForReferenceBased):
             )
         return self.filter_edits(self.cache_annotate[key])
     
-    def filter_edits(self, edits):
+    def filter_edits(
+        self,
+        edits: list[errant.edit.Edit]
+    ) -> list[errant.edit.Edit]:
+        '''Handle edits that will be ignored.'''
         return [e for e in edits if e.type not in ['noop', 'UNK']]
     
     def aggregate_to_overall(self, scores: dict[str, "Score"]) -> "Score":
-        '''Convert error type based scores into an overall score.'''
+        '''Convert error type-wise scores into an overall score.
+        
+        Args:
+            scores (dict[str, "Score"]): Error type-wise scores.
+        
+        Returns:
+            Score: The aggregated score.
+        '''
         overall = self.Score(beta=self.config.beta)
         for v in scores.values():
             overall += v
@@ -48,7 +76,17 @@ class ERRANT(MetricBaseForReferenceBased):
         hypotheses: list[str],
         references: list[list[str]]
     ) -> float:
-        '''Calculate a corpus level score by aggregating verbose scores.'''
+        '''Calculate a corpus level score by aggregating verbose scores.
+
+        Args:
+            sources (list[str]): Source sentence.
+            hypothesis (list[str]): Corrected sentences.
+            references (list[list[str]]): Reference sentences.
+                The shape is (the number of references, the number of sentences).
+        
+        Returns:
+            float: The corpus-level F-beta score.
+        '''
         verbose_scores = self.verbose_score_sentence(
             sources,
             hypotheses,
@@ -74,6 +112,15 @@ class ERRANT(MetricBaseForReferenceBased):
         references: list[list[str]]
     ) -> list[float]:
         '''Calculate sentence level scores by aggregating verbose scores.
+
+        Args:
+            sources (list[str]): Source sentence.
+            hypothesis (list[str]): Corrected sentences.
+            references (list[list[str]]): Reference sentences.
+                The shape is (the number of references, the number of sentences).
+        
+        Returns:
+            list[float]: The sentence-level F-beta scores.
         '''
         verbose_scores = self.verbose_score_sentence(
             sources,
@@ -81,7 +128,7 @@ class ERRANT(MetricBaseForReferenceBased):
             references
         )
         scores = []
-        for v_scores in verbose_scores:  # sentence loop
+        for sent_id, v_scores in enumerate(verbose_scores):  # sentence loop
             best_score = None
             for v_score_for_ref in v_scores:  # reference loop
                 agg_score = self.aggregate_to_overall(v_score_for_ref)
@@ -95,10 +142,21 @@ class ERRANT(MetricBaseForReferenceBased):
         sources: list[str],
         hypotheses: list[str],
         references: list[list[str]]
-    ) -> list[dict[str, "Score"]]:
-        '''Calculate scores keeping references, TP, FP, FN and error types information.
-            The results can be aggregated for the purpose,
-                e.g., sentence-level or corpus-level or error-type-level.
+    ) -> list[list[dict[str, "Score"]]]:
+        '''Calculate scores while retaining sentence and reference boundaries.
+            The results can be aggregated according to the purpose,
+                e.g., at sentence-level or corpus-level.
+
+        Args:
+            sources (list[str]): Source sentence.
+            hypothesis (list[str]): Corrected sentences.
+            references (list[list[str]]): Reference sentences.
+                The shape is (the number of references, the number of sentences).
+        
+        Returns:
+            list[list[dict[str, "Score"]]]: The verbose scores.
+                - The list shape is (num_sents, num_refs)
+                - The dict contains error type-wise scores.
         '''
         num_sents = len(sources)
         num_refs = len(references)

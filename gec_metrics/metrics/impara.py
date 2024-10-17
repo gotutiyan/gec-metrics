@@ -11,6 +11,8 @@ import math
 from dataclasses import dataclass
 
 class SimilarityEstimator(nn.Module):
+    '''This class computes cosine similarity.
+    '''
     def __init__(self, model_id: str):
         super().__init__()
         self.model = AutoModel.from_pretrained(model_id)
@@ -23,6 +25,22 @@ class SimilarityEstimator(nn.Module):
         pred_input_ids: torch.Tensor,
         pred_attention_mask: torch.Tensor,
     ) -> torch.Tensor:
+        '''Compute the cosine similarity given source and corrected sentences.
+
+        Args:
+            src_input_ids (torch.Tensor): Tokenized source sentences.
+                The shape is (num_batch, sequence_length)
+            src_attention_mask (torch.Tensor): The attention mask to handle padding.
+                The shape is (num_batch, sequence_length)
+            src_input_ids (torch.Tensor): Tokenized corrected sentences.
+                The shape is (num_batch, sequence_length)
+            src_attention_mask (torch.Tensor): The attention mask to handle padding.
+                The shape is (num_batch, sequence_length)
+        
+        Returns:
+            torch.Tensor: The cosine similarity.
+                The shape is (num_batch, )
+        '''
         src_state = self.model(
             src_input_ids,
             src_attention_mask
@@ -37,9 +55,25 @@ class SimilarityEstimator(nn.Module):
         similarity = cosine_sim(src_pooler, trg_pooler)
         return similarity
 
-    def mean_pooling(self, logits, mask):
-        logits[mask == 0] = 0 # batch x seq_len x hidden
-        sum_logits = torch.sum(logits, dim=1) # batch x hidden
+    def mean_pooling(
+        self,
+        states: torch.Tensor,
+        mask: torch.Tensor
+    ) -> torch.Tensor:
+        '''Compute mean pooling. Only the representaion with mask==1 are used.
+        
+        Args:
+            states (torch.Tensor): The token-level representation.
+                The shape is (num_batch, sequence_length, hidden_size)
+            mask: torch.Tensor: The mask indicates padding or not.
+                The shape is (num_batch, sequence_length)
+        
+        Returns:
+            torch.Tensor: The mean pooled representation.
+                The shape is (num_batch, hidden_size)
+        '''
+        states[mask == 0] = 0 # batch x seq_len x hidden
+        sum_logits = torch.sum(states, dim=1) # batch x hidden
         length = torch.sum(mask, dim=-1) # batch x
         pooled_logits = torch.div(sum_logits.transpose(1, 0), length).transpose(1, 0) # batch x hidden
         return pooled_logits
@@ -73,6 +107,15 @@ class IMPARA(MetricBaseForReferenceFree):
         sources: list[str],
         hypotheses: list[str]
     ) -> list[float]:
+        '''Calculate sentence-level scores.
+
+        Args:
+            sources (list[str]): Source sentence.
+            hypotheses (list[str]): Corrected sentences.
+        
+        Returns:
+            list[float]: The sentence-level scores.
+        '''
         scores = []
         batch_size = self.config.batch_size
         for i in range(math.ceil(len(sources) / batch_size)):

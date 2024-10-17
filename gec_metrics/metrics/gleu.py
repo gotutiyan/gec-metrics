@@ -31,6 +31,15 @@ class GLEU(GREEN):
         ref_len: int
     ) -> float:
         '''Aggregate n-gram scores to an overall score by the geometric mean.
+        
+        Args:
+            scores (list[Score]): The scores keeping n-gram boundary.
+                The shape is (n, )
+            hyp_len (int): The length of the hypothesis.
+            ref_len (int): The length of the reference.
+        
+        Returns:
+            float: The aggregated score.
         '''
         log_bp = min(0, 1 - ref_len / hyp_len)
         ps = [s.precision for s in scores]
@@ -47,9 +56,16 @@ class GLEU(GREEN):
         hypotheses: list[str],
         references: list[list[str]]
     ) -> float:
-        '''Calculate corpus-level score.
-        We calculate a corpus-level score at each iteration,
-            and then take the average as the final score.
+        '''Calculate sentence level scores by aggregating verbose scores.
+
+        Args:
+            sources (list[str]): Source sentence.
+            hypothesis (list[str]): Corrected sentences.
+            references (list[list[str]]): Reference sentences.
+                The shape is (the number of references, the number of sentences).
+        
+        Returns:
+            float: The corpus-level scores.
         '''
         verbose_scores, hyp_lens, ref_lens = self.verbose_score_sentence(
             sources,
@@ -82,8 +98,16 @@ class GLEU(GREEN):
         hypotheses: list[str],
         references: list[list[str]]
     ) -> float:
-        '''Calculate sentence-level score.
-        The sentence score is the average of the scores for each reference
+        '''Calculate sentence level scores by aggregating verbose scores.
+
+        Args:
+            sources (list[str]): Source sentence.
+            hypothesis (list[str]): Corrected sentences.
+            references (list[list[str]]): Reference sentences.
+                The shape is (the number of references, the number of sentences).
+        
+        Returns:
+            list[float]: The sentence-level scores.
         '''
         # The number of iteration is always 1
         #   because we do not need to draw a reference.
@@ -119,10 +143,25 @@ class GLEU(GREEN):
         '''Compute True Positive and False Negative using GREEN's reformulation.
             (https://aclanthology.org/2024.inlg-main.25.pdf)
 
-            The actual equation is (TI + TK - UD) / (TI + TK + OI + UD), thus we regard 
-                True Positive (TP) as TI + TK - UD,
-                False Positive (FP) as OI + 2*UD.
+            The actual equation is (TI + TK - UD) / (TI + TK + OI + UD),
+                thus we regard 
+                - True Positive (TP) as TI + TK - UD,
+                - False Positive (FP) as OI + 2*UD.
             Finally, precision = TP / (TP+FP) will be the GLEU score.
+
+        Args:
+            sources (list[str]): Source sentence.
+            hypothesis (list[str]): Corrected sentences.
+            references (list[list[str]]): Reference sentences.
+                The shape is (the number of references, the number of sentences).
+        
+        Returns:
+            list[list[list["Score"]]]: The verbose scores.
+                The shape is (num_iterations, num_sents, max_ngram).
+            list[list[int]]: The length for the hypotheses. 
+                The shape is (num_iterations, num_sents)
+            list[list[int]]: The length for the references. 
+                The shape is (num_iterations, num_sents) 
         '''
         num_sents = len(sources)
         num_refs = len(references)
@@ -182,12 +221,25 @@ class GLEUOfficial(GLEU):
         sources: list[str],
         hypotheses: list[str],
         references: list[list[str]]
-    ) -> float:
+    ) -> Tuple[list[list[list["Score"]]], list[list[int]], list[list[int]]]:
         '''The official implementation contains an error
                 where the frequency of n-grams is ignored in the calculation of S\R. 
             As a result, when an n-gram is classified into both TK and UD, 
                 it is entirely counted as TK.
-                This class takes that into account.
+
+        Args:
+            sources (list[str]): Source sentence.
+            hypothesis (list[str]): Corrected sentences.
+            references (list[list[str]]): Reference sentences.
+                The shape is (the number of references, the number of sentences).
+        
+        Returns:
+            list[list[list["Score"]]]: The verbose scores.
+                The shape is (num_iterations, num_sents, max_ngram).
+            list[list[int]]: The length for the hypotheses. 
+                The shape is (num_iterations, num_sents)
+            list[list[int]]: The length for the references. 
+                The shape is (num_iterations, num_sents) 
         '''
         num_sents = len(sources)
         num_refs = len(references)

@@ -36,6 +36,15 @@ class SOME(MetricBaseForReferenceFree):
         sources: list[str],
         hypotheses: list[str]
     ) -> list[float]:
+        '''Calculate sentence-level scores.
+
+        Args:
+            sources (list[str]): Source sentence.
+            hypothesis (list[str]): Corrected sentences.
+        
+        Returns:
+            list[float]: The sentence-level scores.
+        '''
         batch_size = self.config.batch_size
         scores = []
         for i in range(math.ceil(len(sources) / batch_size)):
