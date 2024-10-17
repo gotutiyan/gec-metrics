@@ -7,8 +7,8 @@ from .base import MetricBaseForReferenceBased
 from dataclasses import dataclass
 from tqdm import tqdm
 import time
-
 from .green import GREEN
+
 class GLEU(GREEN):
     '''GLEU using GREEN reformulation (https://aclanthology.org/2024.inlg-main.25.pdf).
     '''
@@ -38,8 +38,8 @@ class GLEU(GREEN):
         if any(p <= 0 for p in ps):
             return 0
         else:
-            prec = sum(math.log(p) for p in ps) / self.config.n
-        return math.exp(log_bp + prec)
+            log_prec = sum(math.log(p) for p in ps) / self.config.n
+        return math.exp(log_bp + log_prec)
     
     def score_corpus(
         self,
@@ -132,40 +132,23 @@ class GLEU(GREEN):
         scores = []  # The shape will be (num_iters, num_sents, max_ngram)
         ref_lens = []  # (num_iters, num_sents)
         hyp_lens = [[len(h.split(' ')) for h in hypotheses]] * self.config.iter  # (num_iters, num_sents)
-        for iter_id in range(self.config.iter):
-            # Draw the ids of the references.
-            # As same as official implementation, we fix seed `iter_id * 101`.
-            random.seed(iter_id*101)
-            sampled_ref_ids = [random.randint(0, num_refs - 1) for _ in range(num_sents)]
-            # Extract the sampled reference and its length.
-            ref_lens.append([
-                all_ref_lens[sampled_ref_id][sent_id] \
-                    for sent_id, sampled_ref_id in enumerate(sampled_ref_ids)
-            ])
-            this_references = [references[sampled_ref_id][sent_id] \
-                    for sent_id, sampled_ref_id in enumerate(sampled_ref_ids)]
-            this_iter_scores = []
+        cached_score = np.zeros((num_refs, num_sents)).tolist()
 
-            cache_scores = dict()
-            # tttt = [0, 0, 0, 0]
-            for sent_id in range(num_sents):
-                ngram_s = self.cached_get_all_ngrams(sources[sent_id])
-                ngram_h = self.cached_get_all_ngrams(hypotheses[sent_id])
-                ngram_r = self.cached_get_all_ngrams(this_references[sent_id])
+        for sent_id in range(num_sents):
+            ngram_s = self.cached_get_all_ngrams(sources[sent_id])
+            ngram_h = self.cached_get_all_ngrams(hypotheses[sent_id])
+            for ref_id in range(num_refs):
+                ngram_r = self.cached_get_all_ngrams(references[ref_id][sent_id])
                 this_score = [self.Score() for _ in range(self.config.n)]
                 for ngram in ngram_h:
                     idx = len(ngram) - 1
                     ms = ngram_s.get(ngram, 0)
                     mh = ngram_h.get(ngram, 0)
                     mr = ngram_r.get(ngram, 0)
-                    if (ms, mh, mr) not in cache_scores:
-                        cache_scores[(ms, mh, mr)] = (
-                            max(min(mr, mh) - ms, 0),
-                            min(ms, mh, mr),
-                            max(mh - max(ms, mr), 0),
-                            max(min(ms, mh) - mr, 0)
-                        )
-                    ti, tk, oi, ud = cache_scores[(ms, mh, mr)]
+                    ti = max(min(mr, mh) - ms, 0)
+                    tk = min(ms, mh, mr)
+                    oi = max(mh - max(ms, mr), 0)
+                    ud = max(min(ms, mh) - mr, 0)
                     s = this_score[idx]
                     # TI
                     s.tp += ti
@@ -176,7 +159,20 @@ class GLEU(GREEN):
                     # UD
                     s.tp -= ud
                     s.fp += 2 * ud
-                this_iter_scores.append(this_score)
+                cached_score[ref_id][sent_id] = this_score
+
+        for iter_id in range(self.config.iter):
+            # Draw the ids of the references.
+            # As same as official implementation, we fix seed `iter_id * 101`.
+            random.seed(iter_id*101)
+            sampled_ref_ids = [random.randint(0, num_refs - 1) for _ in range(num_sents)]
+            # Extract the sampled reference and its length.
+            ref_lens.append([
+                all_ref_lens[ref_id][sent_id] \
+                    for sent_id, ref_id in enumerate(sampled_ref_ids)
+            ])
+            this_iter_scores = [cached_score[ref_id][sent_id] \
+                    for sent_id, ref_id in enumerate(sampled_ref_ids)]
             scores.append(this_iter_scores)
         return scores, hyp_lens, ref_lens
     
@@ -200,43 +196,31 @@ class GLEUOfficial(GLEU):
         ]
         scores = []  # The shape will be (num_iters, num_sents, max_ngram)
         ref_lens = []  # (num_iters, num_sents)
+        # The length of hypthesis is the same in all iterations.
         hyp_lens = [[len(h.split(' ')) for h in hypotheses]] * self.config.iter  # (num_iters, num_sents)
-        for iter_id in range(self.config.iter):
-            # Draw the ids of the references.
-            # As same as official implementation, we fix seed `iter_id * 101`.
-            random.seed(iter_id*101)
-            sampled_ref_ids = [random.randint(0, num_refs - 1) for _ in range(num_sents)]
-            # Extract the sampled reference and its length.
-            ref_lens.append([
-                all_ref_lens[sampled_ref_id][sent_id] \
-                    for sent_id, sampled_ref_id in enumerate(sampled_ref_ids)
-            ])
-            this_references = [references[sampled_ref_id][sent_id] \
-                    for sent_id, sampled_ref_id in enumerate(sampled_ref_ids)]
-            this_iter_scores = []
+        # The score is determined by the sentence id and the reference id,
+        #   thus we pre-compute and cache them.
+        # In the iterations we only sample the reference ids.
+        cached_score = np.zeros((num_refs, num_sents)).tolist()
 
-            cache_scores = dict()
-            for sent_id in range(num_sents):
-                ngram_s = self.cached_get_all_ngrams(sources[sent_id])
-                ngram_h = self.cached_get_all_ngrams(hypotheses[sent_id])
-                ngram_r = self.cached_get_all_ngrams(this_references[sent_id])
+        for sent_id in range(num_sents):
+            ngram_s = self.cached_get_all_ngrams(sources[sent_id])
+            ngram_h = self.cached_get_all_ngrams(hypotheses[sent_id])
+            for ref_id in range(num_refs):
+                ngram_r = self.cached_get_all_ngrams(references[ref_id][sent_id])
                 this_score = [self.Score() for _ in range(self.config.n)]
                 for ngram in ngram_h:
                     idx = len(ngram) - 1
                     ms = ngram_s.get(ngram, 0)
                     mh = ngram_h.get(ngram, 0)
                     mr = ngram_r.get(ngram, 0)
-                    if (ms, mh, mr) not in cache_scores:
-                        cache_scores[(ms, mh, mr)] = (
-                            max(min(mr, mh) - ms, 0),
-                            min(ms, mh, mr),
-                            max(mh - max(ms, mr), 0),
-                            max(min(ms, mh) - mr, 0)
-                        )
-                    ti, tk, oi, ud = cache_scores[(ms, mh, mr)]
+                    ti = max(min(mr, mh) - ms, 0)
+                    tk = min(ms, mh, mr)
+                    oi = max(mh - max(ms, mr), 0)
+                    ud = max(min(ms, mh) - mr, 0)
                     # If TK > 0 and UD > 0, the official implementation treats both of them as TK.
                     # Considering that the TP includes "-UD" and the FP includes "2*UD",
-                    #   This can handle by reducing UD by half and push the rest onto TK.
+                    #   this can handle by reducing UD by half and push the rest onto TK.
                     # For example, when a ngram has TK=2 and UD=1,
                     #   In the correct GLEU is
                     #       TP = TK-UD = 2 - 1 = 1
@@ -261,13 +245,25 @@ class GLEUOfficial(GLEU):
                     # UD
                     s.tp -= ud
                     s.fp += 2 * ud
-                # The official implementation also takes max(TK+TI-UD, 0).
-                # This means we add |TK+TI-UD| if (TK+TI-UD) < 0.
-                # We handle this by adding |TP| to FP when TP<0, and set TP to zero.
+                # The official implementation also takes max(TP, 0).
+                # This means we add |TP| if (TK+TI-UD) < 0.
+                # We handle this by adding TP to FP when TP<0, and set TP to zero.
                 for i in range(self.config.n):
                     if this_score[i].tp < 0:
                         this_score[i].fp += this_score[i].tp
                         this_score[i].tp = 0
-                this_iter_scores.append(this_score)
+                cached_score[ref_id][sent_id] = this_score
+
+        for iter_id in range(self.config.iter):
+            # Draw the ids of the references.
+            # As same as official implementation, we fix seed `iter_id * 101`.
+            random.seed(iter_id*101)
+            sampled_ref_ids = [random.randint(0, num_refs - 1) for _ in range(num_sents)]
+            ref_lens.append([
+                all_ref_lens[ref_id][sent_id] \
+                    for sent_id, ref_id in enumerate(sampled_ref_ids)
+            ])
+            this_iter_scores = [cached_score[ref_id][sent_id] \
+                                for sent_id, ref_id in enumerate(sampled_ref_ids)]
             scores.append(this_iter_scores)
         return scores, hyp_lens, ref_lens
