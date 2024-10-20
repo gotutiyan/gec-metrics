@@ -13,7 +13,8 @@ dependencies = [
   "scipy >= 1.11.3, ==1.*",
   "pytest >= 7.4.2, ==7.*",
   "bert-score >= 0.3.13, ==0.*",
-  "errant >= 3.0.0, ==3.*"
+  "errant >= 3.0.0, ==3.*",
+  "gecommon@git+https://github.com/gotutiyan/gecommon"
 ]
 requires-python = ">=3.9"
 authors = [
@@ -24,8 +25,9 @@ readme = "README.md"
 license = {file = "LICENSE"}
 
 [project.scripts]
-m2_to_raw = "gec_metrics.utils.m2_to_raw:main"
-gen_weights_for_goto = "gec_metrics.utils.gen_weight_for_goto:main"
+make-subset-ref = "gec_metrics.utils.make_subset_reference:main"
+m2-to-raw = "gec_metrics.utils.m2_to_raw:main"
+gen-weights-for-goto = "gec_metrics.utils.gen_weight_for_goto:main"
 
 [tool.pytest.ini_options]
 python_files = [

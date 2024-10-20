@@ -2,126 +2,11 @@ import argparse
 import glob
 import os
 from scipy.stats import pearsonr, spearmanr
-from gec_metrics.metrics import (
-    MetricBaseForReferenceBased,
-    MetricBaseForReferenceFree
-)
-from .SEEDA.utils.corr_sentence import make_h_mtx, calc_corr
+from meta_eval_data.SEEDA.utils.corr_sentence import make_h_mtx, calc_corr
 from dataclasses import dataclass
 import itertools
-
-# -------------------
-# Pre-defined Things
-# -------------------
-
-MODELS = ['BART', 'BERT-fuse', 'GECToR-BERT', 'GECToR-ens', 'GPT-3.5', 'INPUT', 'LM-Critic', 'PIE', 'REF-F', 'REF-M', 'Riken-Tohoku', 'T5', 'TemplateGEC', 'TransGEC', 'UEDIN-MS']
-SCORE_ID = ['EW_edit', 'EW_sent', 'TS_edit', 'TS_sent']
-
-@dataclass
-class Corr:
-    pearson: float = None
-    spearman: float = None
-
-@dataclass
-class SeedaSystemCorrOutput:
-    ew_sent: Corr = None
-    ew_edit: Corr = None
-    ts_sent: Corr = None
-    ts_edit: Corr = None
-
-@dataclass
-class Score:
-    accuracy: float = None
-    kendall: float = None
-    
-@dataclass
-class SeedaSentenceCorrOutput:
-    edit: Score = None
-    sent: Score = None
-
-# -------------------
-# Utils
-# -------------------
-
-def referece_to_subset(reference: list[str]):
-    '''Extract subset references for the reference-based evaluation for SEEDA.'''
-    data_dir = glob.glob('**/SEEDA/outputs/', recursive=True)[0]
-    full_inputs = open(os.path.join(data_dir, 'all', 'INPUT.txt')).read().rstrip().split('\n')
-    subset_inputs = open(os.path.join(data_dir, 'subset', 'INPUT.txt')).read().rstrip().split('\n')
-    subset_indices = [i for i, s in enumerate(full_inputs) if s in subset_inputs]
-    return [reference[i] for i in subset_indices]
-
-# -------------------
-# System-level Correlation
-# -------------------
-
-def seeda_load_data_for_system_corr():
-    subset_dir = glob.glob('**/SEEDA/outputs/subset', recursive=True)[0]
-    del_systems = ['INPUT', 'REF-F', 'GPT-3.5']
-    models = [m for m in MODELS if m not in del_systems]
-    data = {
-        'sentences': [],
-        'references': [],
-        'human_score': dict(),
-        'models': models,
-        'input_sentences': []
-    }
-    for model in models:
-        sents = open(os.path.join(subset_dir, model + '.txt')).read().rstrip().split('\n')
-        data['sentences'].append(sents)
-    
-    score_dir = glob.glob('**/SEEDA/scores/human', recursive=True)[0]
-    for score_id in SCORE_ID:
-        scores = list(map(float, open(
-            os.path.join(score_dir, score_id + '.txt')
-        ).read().rstrip().split('\n')))
-        scores = [s for i, s in enumerate(scores) if MODELS[i] not in del_systems]
-        data['human_score'][score_id] = scores
-
-    input_sents = open(os.path.join(subset_dir, 'INPUT.txt')).read().rstrip().split('\n')
-    data['input_sentences'] = input_sents
-
-    conll14_dir = glob.glob('**/conll14/', recursive=True)[0]
-    ref0 = open(os.path.join(conll14_dir, 'REF0')).read().rstrip().split('\n')
-    ref1 = open(os.path.join(conll14_dir, 'REF1')).read().rstrip().split('\n')
-    data['references'] = [ref0, ref1]
-    return data
-    
-def seeda_system_corr(scorer):
-    data = seeda_load_data_for_system_corr()
-    subset_references = [referece_to_subset(ref) for ref in data['references']]
-    my_scores = []
-    for model_id, model in enumerate(data['models']):
-        if isinstance(scorer, MetricBaseForReferenceBased):
-            score = scorer.score_corpus(
-                sources=data['input_sentences'],
-                hypotheses=data['sentences'][model_id],
-                references=subset_references
-            )
-        else:
-            score = scorer.score_corpus(
-                sources=data['input_sentences'],
-                hypotheses=data['sentences'][model_id]
-            )
-        my_scores.append(score)
-    corrs = []
-    for score_id in SCORE_ID:
-        corr = Corr()
-        print(my_scores)
-        print(data['human_score'][score_id])
-        corr.pearson = pearsonr(my_scores, data['human_score'][score_id])[0]
-        corr.spearman = spearmanr(my_scores, data['human_score'][score_id])[0]
-        corrs.append(corr)
-    return SeedaSystemCorrOutput(
-        ew_edit=corrs[0],
-        ew_sent=corrs[1],
-        ts_edit=corrs[2],
-        ts_sent=corrs[3],
-    )
-
-# -------------------
-# Sentence-level Correlation
-# -------------------
+from .base import MetaEvalBase
+from gec_metrics.metrics import MetricBase
 
 # This function is based on the official one (https://github.com/tmu-nlp/SEEDA),
 #   but fixed to input score as list[list[float]], not file paths.
@@ -168,60 +53,180 @@ def make_m_mtx(
     m_mtx = {k: m_mtx[k] for k in sorted(m_mtx.keys())}
     return m_mtx
 
-def seeda_load_data_for_sentence_corr():
-    subset_dir = glob.glob('**/SEEDA/outputs/subset/', recursive=True)[0]
-    data_dir = glob.glob('**/SEEDA/data/', recursive=True)[0]
-    del_systems = ['INPUT', 'REF-F', 'GPT-3.5']
-    models = [m for m in MODELS if m not in del_systems]
-    data = {
-        'sentences': [],
-        'human_score_paths': dict(),
-        'models': models,
-        'del_models': ['INPUT', 'REF-F', 'GPT-3.5'],
-        'input_sentences': []
-    }
-    data['human_score_paths']['edit'] = glob.glob(data_dir + 'judgments_edit.xml')[0]
-    data['human_score_paths']['sent'] = glob.glob(data_dir + 'judgments_sent.xml')[0]
-    for model in models:
-        sents = open(os.path.join(subset_dir, model + '.txt')).read().rstrip().split('\n')
-        data['sentences'].append(sents)
-    
-    input_sents = open(os.path.join(subset_dir, 'INPUT.txt')).read().rstrip().split('\n')
-    data['input_sentences'] = input_sents
+class MetaEvalSEEDA(MetaEvalBase):
+    MODELS = ['BART', 'BERT-fuse', 'GECToR-BERT', 'GECToR-ens', 'GPT-3.5', 'INPUT', 'LM-Critic', 'PIE', 'REF-F', 'REF-M', 'Riken-Tohoku', 'T5', 'TemplateGEC', 'TransGEC', 'UEDIN-MS']
+    SCORE_ID = ['EW_edit', 'EW_sent', 'TS_edit', 'TS_sent']
+    @dataclass
+    class SEEDASystemCorrOutput(MetaEvalBase.Output):
+        '''The dataclass to store system-level correlations.
 
-    conll14_dir = glob.glob('**/conll14/', recursive=True)[0]
-    ref0 = open(os.path.join(conll14_dir, 'REF0')).read().rstrip().split('\n')
-    ref1 = open(os.path.join(conll14_dir, 'REF1')).read().rstrip().split('\n')
-    data['references'] = [ref0, ref1]
-    return data
+        Args:
+            ew_sent (MetaEvalBase.Corr):
+                SEEDA-S correlation based on Expected Wins-based human evaluation.
+            ew_edit (MetaEvalBase.Corr):
+                SEEDA-E correlation based on Expected Wins-based human evaluation.
+            ts_sent (MetaEvalBase.Corr):
+                SEEDA-S correlation based on TrueSkill-based human evaluation.
+            ts_edit (MetaEvalBase.Corr):
+                SEEDA-E correlation based on TrueSkill-based human evaluation.
+        '''
+        ew_sent: MetaEvalBase.Corr = None
+        ew_edit: MetaEvalBase.Corr = None
+        ts_sent: MetaEvalBase.Corr = None
+        ts_edit: MetaEvalBase.Corr = None
 
+    @dataclass
+    class SEEDASentenceCorrOutput(MetaEvalBase.Output):
+        '''The dataclass to store sentence-level correlations.
 
-def seeda_sentence_corr(scorer):
-    data = seeda_load_data_for_sentence_corr()
-    subset_references = [referece_to_subset(ref) for ref in data['references']]
-    metric_score = []
-    for model_id, model in enumerate(data['models']):
-        if isinstance(scorer, MetricBaseForReferenceBased):
-            scores = scorer.score_sentences(
-                sources=data['input_sentences'],
-                hypotheses=data['sentences'][model_id],
-                references=subset_references
-            )
-        else:
-            scores = scorer.score_sentences(
-                sources=data['input_sentences'],
-                hypotheses=data['sentences'][model_id]
-            )
-        metric_score.append(scores)
+        Args:
+            sent (MetaEvalBase.Corr):
+                SEEDA-S sentence-level correlation.
+            edit (MetaEvalBase.Corr):
+                SEEDA-E sentence-level correlation.
+        '''
+        sent: MetaEvalBase.Corr = None
+        edit: MetaEvalBase.Corr = None
+
+    @dataclass
+    class Config:
+        system: str = 'base'
+
+    def __init__(self, config: MetaEvalBase.Config):
+        super().__init__(config)
+        self.system_data = self.load_system_data()
+        self.sentence_data = self.load_sentence_data()
+
+    def load_system_data(self) -> dict[str, list]:
+        '''Load evaluation data and human scores for system-level meta-evalaution.
+        '''
+        subset_dir = glob.glob('**/SEEDA/outputs/subset', recursive=True)[0]
+        del_systems = {
+            'base': ['INPUT', 'REF-F', 'GPT-3.5'],
+            '+INPUT': ['REF-F', 'GPT-3.5'],
+            '+REF-F_GPT-3.5': ['INPUT'],
+            'all': []
+        }[self.config.system]
+        models = [m for m in self.MODELS if m not in del_systems]
+        data = {
+            'hypotheses': [],
+            'references': [],
+            'human_score': dict(),
+            'models': models,
+            'sources': []
+        }
+        for model in models:
+            sents = open(os.path.join(subset_dir, model + '.txt')).read().rstrip().split('\n')
+            data['hypotheses'].append(sents)
         
-    scores = []
-    for mode in ['edit', 'sent']:
-        h_mtx = make_h_mtx(data['human_score_paths'][mode], data['models'], data['del_models'])
-        m_mtx = make_m_mtx(metric_score, data['models'])
-        acc, ken = calc_corr(h_mtx, m_mtx)
-        score = Score(accuracy=acc, kendall=ken)
-        scores.append(score)
-    return SeedaSentenceCorrOutput(
-        edit=scores[0],
-        sent=scores[1]
-    )
+        score_dir = glob.glob('**/SEEDA/scores/human', recursive=True)[0]
+        for score_id in self.SCORE_ID:
+            scores = list(map(float, open(
+                os.path.join(score_dir, score_id + '.txt')
+            ).read().rstrip().split('\n')))
+            scores = [s for i, s in enumerate(scores) if self.MODELS[i] not in del_systems]
+            data['human_score'][score_id] = scores
+
+        data['sources'] = open(os.path.join(subset_dir, 'INPUT.txt')).read().rstrip().split('\n')
+
+        ref0 = open(os.path.join(subset_dir, 'REF0.txt')).read().rstrip().split('\n')
+        ref1 = open(os.path.join(subset_dir, 'REF1.txt')).read().rstrip().split('\n')
+        data['references'] = [ref0, ref1]
+        return data
+    
+    def load_sentence_data(self) -> dict[str, int]:
+        '''Load evaluation data and human scores for sentence-level meta-evaluation.'''
+        subset_dir = glob.glob('**/SEEDA/outputs/subset/', recursive=True)[0]
+        data_dir = glob.glob('**/SEEDA/data/', recursive=True)[0]
+        del_systems = {
+            'base': ['INPUT', 'REF-F', 'GPT-3.5'],
+            '+INPUT': ['REF-F', 'GPT-3.5'],
+            '+REF-F_GPT-3.5': ['INPUT'],
+            'all': []
+        }[self.config.system]
+        del_systems += ['REF0', 'REF1']
+        models = [m for m in self.MODELS if m not in del_systems]
+        data = {
+            'hypotheses': [],
+            'human_score_paths': dict(),
+            'models': models,
+            'del_models': ['INPUT', 'REF-F', 'GPT-3.5'],
+            'sources': []
+        }
+        data['human_score_paths']['edit'] = glob.glob(data_dir + 'judgments_edit.xml')[0]
+        data['human_score_paths']['sent'] = glob.glob(data_dir + 'judgments_sent.xml')[0]
+        for model in models:
+            sents = open(os.path.join(subset_dir, model + '.txt')).read().rstrip().split('\n')
+            data['hypotheses'].append(sents)
+        
+        input_sents = open(os.path.join(subset_dir, 'INPUT.txt')).read().rstrip().split('\n')
+        data['sources'] = input_sents
+
+        ref0 = open(os.path.join(subset_dir, 'REF0.txt')).read().rstrip().split('\n')
+        ref1 = open(os.path.join(subset_dir, 'REF1.txt')).read().rstrip().split('\n')
+        data['references'] = [ref0, ref1]
+        return data
+    
+    def corr_system(self, metric: MetricBase) -> "SEEDASystemCorrOutput":
+        '''Compute system-level correlations.
+
+        Args:
+            metric (MetricBase): The metric to be evaluated.
+
+        Returns:
+            SEEDASystemCorrOutput: The correlations.
+        '''
+        data = self.system_data
+        my_scores = []
+        for model_id, model in enumerate(data['models']):
+            score = self.calc_system_score(
+                metric,
+                data['sources'],
+                data['hypotheses'][model_id],
+                data['references']
+            )
+            my_scores.append(score)
+        corrs = []
+        for score_id in self.SCORE_ID:
+            corr = self.Corr()
+            corr.pearson = pearsonr(my_scores, data['human_score'][score_id])[0].item()
+            corr.spearman = spearmanr(my_scores, data['human_score'][score_id])[0].item()
+            corrs.append(corr)
+        return self.SEEDASystemCorrOutput(
+            ew_edit=corrs[0],
+            ew_sent=corrs[1],
+            ts_edit=corrs[2],
+            ts_sent=corrs[3],
+        )
+    
+    def corr_sentence(self, metric: MetricBase) -> 'SEEDASentenceCorrOutput':
+        '''Compute sentence-level correlations.
+
+        Args:
+            metric (MetricBase): The metric to be evaluated.
+
+        Returns:
+            SEEDASentenceCorrOutput: The correlations.
+        '''
+        data = self.sentence_data
+        metric_score = []
+        for model_id, model in enumerate(data['models']):
+            scores = self.calc_sentence_score(
+                metric,
+                data['sources'],
+                data['hypotheses'][model_id],
+                data['references']
+            )
+            metric_score.append(scores)
+            
+        corrs = []
+        for mode in ['edit', 'sent']:
+            h_mtx = make_h_mtx(data['human_score_paths'][mode], data['models'], data['del_models'])
+            m_mtx = make_m_mtx(metric_score, data['models'])
+            acc, ken = calc_corr(h_mtx, m_mtx)
+            score = self.Corr(accuracy=acc, kendall=ken)
+            corrs.append(score)
+        return self.SEEDASentenceCorrOutput(
+            edit=corrs[0],
+            sent=corrs[1]
+        )

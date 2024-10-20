@@ -18,7 +18,7 @@ python -m spacy download en
 All metrics has the same interface.  
 This is an GLEU exmaple.
 ```python
-from gec_metrics import GLEU
+from gec_metrics.metrics import GLEU
 scorer = GLEU(GLEU.Config())
 srcs = ['This sentences contain grammatical error .']
 hyps = ['This sentence contains an grammatical error .']
@@ -86,14 +86,14 @@ from gec_metrics.metrics import GoToScorer
 scorer = GoToScorer(GoToScorer.Config(
     beta=0.5,  # The beta for F-beta score
     ref_id=0,  # The reference id
-    no_weight=True,  # If False, all weights are 1.0
+    no_weight=True,  # If True, all weights are 1.0
     weight_file=None  # It is required if no_weight=False
 ))
 ```
-You need to generate a weight file via `gen_weight_for_gotoscorer`.  
-The output is JSON file.  
+You need to generate a weight file via `gen-weight-for-gotoscorer`.  
+The output is a JSON file.  
 ```sh
-gen_weight_for_gotoscorer \
+gen-weight-for-gotoscorer \
     --src <raw text file> \
     --ref <raw text file> \
     --hyp <raw text file 1> <raw text file 2> ... <raw text file N> \
@@ -146,7 +146,7 @@ scorer = SOME(SOME.Config(
     weight_f=0.55,
     weight_g=0.43,
     weight_m=0.02,
-    batch_size=2
+    batch_size=32
 ))
 ```
 ### Scribendi [[Islam+ 21]](https://aclanthology.org/2021.emnlp-main.239/)
@@ -154,11 +154,11 @@ scorer = SOME(SOME.Config(
 from gec_metrics.metrics import Scribendi
 scorer = Scribendi(Scribendi.Config(
     model='gpt2',  # The model name or path to the language model to compute perplexity
-    threshold=0.8  # The threshold for the maximum values of token-sort-ratio and levelshtein distance
+    threshold=0.8  # The threshold for the maximum values of token-sort-ratio and levelshtein distance ratio
 ))
 ```
 ### IMPARA [[Maeda+ 22]](https://aclanthology.org/2022.coling-1.316/)  
-Note that the QE model is an unofficial model but achieves comparable correlation with the human evaluation results.  
+Note that the QE model is an unofficial model which achieves comparable correlation with the human evaluation results.  
 By default, it uses an unofficial pretrained QE model: [[gotutiyan/IMPARA-QE]](https://huggingface.co/gotutiyan/IMPARA-QE).
 ```python
 from gec_metrics.metrics import IMPARA
@@ -199,54 +199,71 @@ meta_eval_data/
     │   │   ├── ...├── ...
 ```
 
-### SEEDA [[Kobayashi+ 24]](https://direct.mit.edu/tacl/article/doi/10.1162/tacl_a_00676/123651/Revisiting-Meta-evaluation-for-Grammatical-Error)
+### SEEDA: [[Kobayashi+ 24]](https://direct.mit.edu/tacl/article/doi/10.1162/tacl_a_00676/123651/Revisiting-Meta-evaluation-for-Grammatical-Error)
 The examples below uses ERRANT as a metric, but can also use other metrics based on `gec_metrics.metrics.MetricBase`.  
 - `ew_` means using ExpectedWins human evaluation scores and `ts_` means using TrueSkill.
 
 ```python
-from gec_metrics.metrics import MetricBase, ERRANT
-from gec_metrics.meta_eval import seeda_system_corr, seeda_sentence_corr
-scorer = ERRANT(ERRANT.Config())
-assert isinstance(scorer, MetricBase)
+from gec_metrics.metrics import MetricBase, GLEU
+from gec_metrics.meta_eval import MetaEvalSEEDA
+scorer = GLEU(GLEU.Config())
+meta_seeda = MetaEvalSEEDA(
+    MetaEvalSEEDA.Config(system='base')
+)
 # System correlation
-results = seeda_system_corr(scorer)
+results = meta_seeda.corr_system(scorer)
 # Output:
-# SeedaSystemCorrOutput(ew_sent=Corr(pearson=0.5240277289996839,
-#                                    spearman=0.3706293706293707),
-#                       ew_edit=Corr(pearson=0.6918530009699867,
-#                                    spearman=0.6573426573426573),
-#                       ts_sent=Corr(pearson=0.5451092916942388,
-#                                    spearman=0.3426573426573427),
-#                       ts_edit=Corr(pearson=0.6886654535290525,
-#                                    spearman=0.6433566433566434))
+# SEEDASystemCorrOutput(ew_sent=Corr(pearson=0.8577578796749202,
+#                                    spearman=0.9492133645984593,
+#                                    accuracy=None,
+#                                    kendall=None),
+#                       ew_edit=Corr(pearson=0.9051067008556378,
+#                                    spearman=0.9492133645984593,
+#                                    accuracy=None,
+#                                    kendall=None),
+#                       ts_sent=Corr(pearson=0.8662088005100965,
+#                                    spearman=0.9422080999150758,
+#                                    accuracy=None,
+#                                    kendall=None),
+#                       ts_edit=Corr(pearson=0.9166744722074965,
+#                                    spearman=0.9246949382066171,
+#                                    accuracy=None,
+#                                    kendall=None))
 
 # Sentence correlation
-results = seeda_sentence_corr(scorer)
+results = meta_seeda.corr_sentence(scorer)
 # Output:
-# SeedaSentenceCorrOutput(edit=Score(accuracy=0.6081992734820966,
-#                                    kendall=0.21639854696419306),
-#                         sent=Score(accuracy=0.594286323419678,
-#                                    kendall=0.18857264683935615))
-
+# SEEDASentenceCorrOutput(sent=Corr(pearson=None,
+#                                   spearman=None,
+#                                   accuracy=0.6562200191877199,
+#                                   kendall=0.3124400383754397),
+#                         edit=Corr(pearson=None,
+#                                   spearman=None,
+#                                   accuracy=0.6528282304099636,
+#                                   kendall=0.30565646081992737))
 ```
 
-### Using Grundkiewicz+ 15 [[paper]](https://aclanthology.org/D15-1052/)
+### GJG15: [[Grundkiewicz+ 15]](https://aclanthology.org/D15-1052/)
 
 This is referred to `GJG15` in the SEEDA paper.  
-Basically, True Skills ranking is used to compute the correlation.
+Basically, TrueSkill ranking is used to compute the correlation.
 
 ```python
-from gec_metrics.metrics import MetricBase, ERRANT
-from gec_metrics.meta_eval import gjg_system_corr, gjg_sentence_corr
-scorer = ERRANT(ERRANT.Config())
-assert isinstance(scorer, MetricBase)
+from gec_metrics.metrics import MetricBase, GLEU
+from gec_metrics.meta_eval import MetaEvalGJG
+scorer = GLEU(GLEU.Config())
+meta_gjg = MetaEvalGJG(MetaEvalGJG.Config())
 # System correlation
-results = gjg_system_corr(scorer)
+results = meta_gjg.corr_system(scorer)
 # Output:
-# GJGSystemCorrOutput(ew=Corr(pearson=0.6470959069938824,
-#                             spearman=0.6868131868131868),
-#                     ts=Corr(pearson=0.6919316299420801,
-#                             spearman=0.7142857142857143))
+# GJGOutput(ts=Corr(pearson=0.6633835644883472,
+#                   spearman=0.6868131868131868,
+#                   accuracy=None,
+#                   kendall=None),
+#           ew=Corr(pearson=0.601290729078602,
+#                   spearman=0.5934065934065934,
+#                   accuracy=None,
+#                   kendall=None))
 ```
 
 # Correlations can be obtained

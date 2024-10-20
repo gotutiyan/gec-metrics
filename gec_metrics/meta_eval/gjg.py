@@ -1,32 +1,33 @@
 import glob
 import os
+from gec_metrics.metrics.base import MetricBase
 from scipy.stats import pearsonr, spearmanr
-from gec_metrics.metrics import MetricBaseForReferenceBased
 from dataclasses import dataclass
+from .base import MetaEvalBase
 
-@dataclass
-class Corr:
-    pearson: float = None
-    spearman: float = None
+class MetaEvalGJG(MetaEvalBase):
+    @dataclass
+    class GJGOutput(MetaEvalBase.Output):
+        '''The dataclass to store the meta-evaluation results.
+        
+        Args:
+            ts (MetaEvalBase.Corr):
+                The correlation using TrueSkill-based human evaluation.
+            ts (MetaEvalBase.Corr):
+                The correlation using Expected Wins-based human evaluation.
+        '''
+        ts: MetaEvalBase.Corr = None
+        ew: MetaEvalBase.Corr = None
 
-@dataclass
-class GJGSystemCorrOutput:
-    ew: Corr = None
-    ts: Corr = None
+    def __init__(self, config: MetaEvalBase.Config):
+        super().__init__(config)
+        self.system_data = self.load_system_data()
 
-@dataclass
-class Score:
-    accuracy: float = None
-    kendall: float = None
-    
-@dataclass
-class GJGSentenceCorrOutput:
-    ew: Score = None
-    ts: Score = None
-
-def gjg_load_data_for_system_corr():
-    # Expected Wins scores
-    ew_table = '''0.628 1 AMU
+    def load_system_data(self) -> dict[str, list]:
+        '''Loads evaluation data and human scores.'''
+        # Expected Wins scores
+        # Table 3 (b) https://aclanthology.org/D15-1052.pdf
+        ew_table = '''0.628 1 AMU
 0.566 2-3 RAC
 0.561 2-4 CAMB
 0.550 3-5 CUUI
@@ -39,7 +40,9 @@ def gjg_load_data_for_system_corr():
 0.456 9-12 INPUT
 0.437 11-12 NTHU
 0.300 13 IPN'''.split('\n')
-    ts_table = '''0.273 1 AMU
+        # TrueSkill scores
+        # Table 3 (c) https://aclanthology.org/D15-1052.pdf
+        ts_table = '''0.273 1 AMU
 0.182 2 CAMB
 0.114 3-4 RAC
 0.105 3-5 CUUI
@@ -52,58 +55,69 @@ def gjg_load_data_for_system_corr():
 -0.074 9-11 SJTU
 -0.142 12 NTHU
 -0.358 13 IPN'''.split('\n')
+        
+        ew_models = [line.split(' ')[2] for line in ew_table]
+        ew_scores = [float(line.split(' ')[0]) for line in ew_table]
+        ts_models = [line.split(' ')[2] for line in ts_table]
+        ts_scores = [float(line.split(' ')[0]) for line in ts_table]
+        ts_scores_reorder = [ts_scores[ts_models.index(m)] for m in ew_models]
+        data_dir = glob.glob('**/conll14/', recursive=True)[0]
+        data = {
+            'hypotheses': [],
+            'references': [],
+            'human_score': {
+                'ew': ew_scores,
+                'ts': ts_scores_reorder
+            },
+            'models': ew_models,
+            'sources': []
+        }
+        sentences = []
+        for model in ew_models:
+            sents = open(os.path.join(data_dir, 'official_submissions', model)).read().rstrip().split('\n')
+            sentences.append(sents)
+        data['hypotheses'] = sentences
+        input_sents = open(os.path.join(data_dir, 'official_submissions', 'INPUT')).read().rstrip().split('\n')
+        data['sources'] = input_sents
+        ref0 = open(os.path.join(data_dir, 'REF0')).read().rstrip().split('\n')
+        ref1 = open(os.path.join(data_dir, 'REF1')).read().rstrip().split('\n')
+        data['references'] = [ref0, ref1]
+        return data
     
-    ew_models = [line.split(' ')[2] for line in ew_table]
-    ew_scores = [float(line.split(' ')[0]) for line in ew_table]
-    ts_models = [line.split(' ')[2] for line in ts_table]
-    ts_scores = [float(line.split(' ')[0]) for line in ts_table]
-    ts_scores_reorder = [ts_scores[ts_models.index(m)] for m in ew_models]
-    data_dir = glob.glob('**/conll14/', recursive=True)[0]
-    data = {
-        'sentences': [],
-        'references': [],
-        'human_score': {
-            'ew': ew_scores,
-            'ts': ts_scores_reorder
-        },
-        'models': ew_models,
-        'input_sentences': []
-    }
-    sentences = []
-    for model in ew_models:
-        sents = open(os.path.join(data_dir, 'official_submissions', model)).read().rstrip().split('\n')
-        sentences.append(sents)
-    data['sentences'] = sentences
-    input_sents = open(os.path.join(data_dir, 'official_submissions', 'INPUT')).read().rstrip().split('\n')
-    data['input_sentences'] = input_sents
-    ref0 = open(os.path.join(data_dir, 'REF0')).read().rstrip().split('\n')
-    ref1 = open(os.path.join(data_dir, 'REF1')).read().rstrip().split('\n')
-    data['references'] = [ref0, ref1]
-    return data
+    def load_sentence_data(self) -> dict[str, list]:
+        '''TODO: Implement it.'''
+        return super().load_sentence_data()
+    
+    def corr_system(self, metric: MetricBase) -> "GJGOutput":
+        '''Compute system-level correlations.
 
-def gjg_system_corr(scorer):
-    data = gjg_load_data_for_system_corr()
-    my_scores = []
-    for model_id, model in enumerate(data['models']):
-        if isinstance(scorer, MetricBaseForReferenceBased):
-            score = scorer.score_corpus(
-                sources=data['input_sentences'],
-                hypotheses=data['sentences'][model_id],
-                references=data['references']
+        Args:
+            metric (MetricBase): The metric to be evaluated.
+
+        Returns:
+            GJGOutput: The correlations.
+        '''
+        data = self.system_data
+        my_scores = []
+        for model_id, model in enumerate(data['models']):
+            score = self.calc_system_score(
+                metric,
+                data['sources'],
+                data['hypotheses'][model_id],
+                data['references']
             )
-        else:
-            score = scorer.score_corpus(
-                sources=data['input_sentences'],
-                hypotheses=data['sentences'][model_id]
-            )
-        my_scores.append(score)
-    corrs = []
-    for score_id in ['ew', 'ts']:
-        corr = Corr()
-        corr.pearson = pearsonr(my_scores, data['human_score'][score_id])[0]
-        corr.spearman = spearmanr(my_scores, data['human_score'][score_id])[0]
-        corrs.append(corr)
-    return GJGSystemCorrOutput(
-        ew=corrs[0],
-        ts=corrs[1]
-    )
+            my_scores.append(score)
+        corrs = []
+        for score_id in ['ew', 'ts']:
+            corr = self.Corr()
+            corr.pearson = pearsonr(my_scores, data['human_score'][score_id])[0].item()
+            corr.spearman = spearmanr(my_scores, data['human_score'][score_id])[0].item()
+            corrs.append(corr)
+        return self.GJGOutput(
+            ew=corrs[0],
+            ts=corrs[1]
+        )
+        
+    def corr_sentence(self, scorer: MetricBase):
+        '''TODO: Implement it.'''
+        return super().corr_sentence(scorer)
