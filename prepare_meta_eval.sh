@@ -26,36 +26,16 @@ make-subset-ref \
     --out $DIR/SEEDA/outputs/subset/REF$i.txt
 done
 
+make-subset-ref \
+    --src_full $DIR/SEEDA/outputs/all/INPUT.txt \
+    --src_subset $DIR/SEEDA/outputs/subset/INPUT.txt \
+    --ref $DIR/SEEDA/outputs/all/LM-Critic.txt \
+    --out $DIR/SEEDA/outputs/subset/LM-Critic.txt
+
 rm official_submissions.tar.gz
 rm conll14st-test-data.tar.gz
 rm -r conll14st-test-data
 
-
-# Output: 
-# meta_eval_data/
-# ├── conll14
-# │   ├── official_submissions
-# │   │   ├── AMU
-# │   │   ├── CAMB
-# │   │   ├── CUUI
-# │   │   ├── IITB
-# │   │   ├── INPUT
-# │   │   ├── IPN
-# │   │   ├── NTHU
-# │   │   ├── PKU
-# │   │   ├── POST
-# │   │   ├── RAC
-# │   │   ├── SJTU
-# │   │   ├── UFC
-# │   │   └── UMC
-# │   ├── REF0
-# │   └── REF1
-# └── SEEDA
-#     ├── outputs
-#     │   ├── all
-#     │   │   ├── ...
-#     │   └── subset
-#     │       ├── ...
-#     ├── scores
-#     │   ├── human
-#     │   │   ├── ...
+mkdir $DIR/GJG15/
+cd $DIR/GJG15/
+wget https://github.com/grammatical/evaluation/raw/refs/heads/master/data/judgments.xml

@@ -181,6 +181,8 @@ bash prepare_meta_eval.sh
 This scripts creates `meta_eval_data/` directory which consists of SEEDA dataset and CoNLL14 official submissions.
 ```
 meta_eval_data/
+├── GJG15
+│   └── judgments.xml
 ├── conll14
 │   ├── official_submissions
 │   │   ├── AMU
@@ -213,20 +215,20 @@ meta_seeda = MetaEvalSEEDA(
 # System correlation
 results = meta_seeda.corr_system(scorer)
 # Output:
-# SEEDASystemCorrOutput(ew_sent=Corr(pearson=0.8577578796749202,
-#                                    spearman=0.9492133645984593,
+# SEEDASystemCorrOutput(ew_edit=Corr(pearson=0.9007842791853424,
+#                                    spearman=0.9300699300699302,
 #                                    accuracy=None,
 #                                    kendall=None),
-#                       ew_edit=Corr(pearson=0.9051067008556378,
-#                                    spearman=0.9492133645984593,
+#                       ew_sent=Corr(pearson=0.8749437873537543,
+#                                    spearman=0.9090909090909092,
 #                                    accuracy=None,
 #                                    kendall=None),
-#                       ts_sent=Corr(pearson=0.8662088005100965,
-#                                    spearman=0.9422080999150758,
+#                       ts_edit=Corr(pearson=0.9123732084071973,
+#                                    spearman=0.9440559440559443,
 #                                    accuracy=None,
 #                                    kendall=None),
-#                       ts_edit=Corr(pearson=0.9166744722074965,
-#                                    spearman=0.9246949382066171,
+#                       ts_sent=Corr(pearson=0.8856173179230024,
+#                                    spearman=0.9020979020979022,
 #                                    accuracy=None,
 #                                    kendall=None))
 
@@ -235,12 +237,12 @@ results = meta_seeda.corr_sentence(scorer)
 # Output:
 # SEEDASentenceCorrOutput(sent=Corr(pearson=None,
 #                                   spearman=None,
-#                                   accuracy=0.6562200191877199,
-#                                   kendall=0.3124400383754397),
+#                                   accuracy=0.6715701950751519,
+#                                   kendall=0.3431403901503038),
 #                         edit=Corr(pearson=None,
 #                                   spearman=None,
-#                                   accuracy=0.6528282304099636,
-#                                   kendall=0.30565646081992737))
+#                                   accuracy=0.6734561494551116,
+#                                   kendall=0.3469122989102231))
 ```
 
 ### GJG15: [[Grundkiewicz+ 15]](https://aclanthology.org/D15-1052/)
@@ -256,14 +258,21 @@ meta_gjg = MetaEvalGJG(MetaEvalGJG.Config())
 # System correlation
 results = meta_gjg.corr_system(scorer)
 # Output:
-# GJGOutput(ts=Corr(pearson=0.6633835644883472,
-#                   spearman=0.6868131868131868,
-#                   accuracy=None,
-#                   kendall=None),
-#           ew=Corr(pearson=0.601290729078602,
-#                   spearman=0.5934065934065934,
-#                   accuracy=None,
-#                   kendall=None))
+# GJGSystemCorrOutput(ew=Corr(pearson=0.601290729078602,
+#                             spearman=0.5934065934065934,
+#                             accuracy=None,
+#                             kendall=None),
+#                     ts=Corr(pearson=0.6633835644883472,
+#                             spearman=0.6868131868131868,
+#                             accuracy=None,
+#                             kendall=None))
+
+results = meta_gjg.corr_sentence(scorer)
+# Output:
+# GJGSentenceCorrOutput(corr=Corr(pearson=None,
+#                                 spearman=None,
+#                                 accuracy=0.6729157079690282,
+#                                 kendall=0.34583141593805644))
 ```
 
 # Correlations can be obtained

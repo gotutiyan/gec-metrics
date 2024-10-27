@@ -26,10 +26,10 @@ def test_corr_system():
     
     corr_cls = MetaEvalSEEDA.Corr
     gold = MetaEvalSEEDA.SEEDASystemCorrOutput(
-        ew_edit=corr_cls(pearson=0.44776143599850254, spearman=0.4798606308117672),
-        ew_sent=corr_cls(pearson=0.4889329068258237, spearman=0.5078816895453011),
-        ts_edit=corr_cls(pearson=0.5001699042776178, spearman=0.6444843508712785),
-        ts_sent=corr_cls(pearson=0.5236585407482779, spearman=0.5148869542286845)
+        ew_edit=corr_cls(pearson=0.42736690406501093, spearman=0.4545454545454546),
+        ew_sent=corr_cls(pearson=0.4532076150049142, spearman=0.5454545454545455),
+        ts_edit=corr_cls(pearson=0.4834645229702062, spearman=0.5944055944055945),
+        ts_sent=corr_cls(pearson=0.4880423593992749, spearman=0.5524475524475525)
     )
     for k in gold.__dict__:
         assert math.isclose(gold.__dict__[k].pearson, out.__dict__[k].pearson, rel_tol=1e-6)
@@ -42,8 +42,8 @@ def test_corr_sentence():
     
     corr_cls = MetaEvalSEEDA.Corr
     gold = MetaEvalSEEDA.SEEDASentenceCorrOutput(
-        edit=corr_cls(accuracy=0.5467047223663726, kendall=0.0934094447327452),
-        sent=corr_cls(accuracy=0.5540987101588317, kendall=0.10819742031766336)
+        edit=corr_cls(accuracy=0.5365853658536586, kendall=0.07317073170731707),
+        sent=corr_cls(accuracy=0.5455708346658139, kendall=0.09114166933162776)
     )
     for k in gold.__dict__:
         assert math.isclose(gold.__dict__[k].accuracy, out.__dict__[k].accuracy, rel_tol=1e-6)

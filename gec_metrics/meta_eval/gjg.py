@@ -4,10 +4,13 @@ from gec_metrics.metrics.base import MetricBase
 from scipy.stats import pearsonr, spearmanr
 from dataclasses import dataclass
 from .base import MetaEvalBase
+import xml.etree.ElementTree as ET
+import itertools
 
 class MetaEvalGJG(MetaEvalBase):
+    MODELS = ['AMU', 'RAC', 'CAMB', 'CUUI', 'POST', 'UFC', 'PKU', 'UMC', 'IITB', 'SJTU', 'INPUT', 'NTHU', 'IPN']
     @dataclass
-    class GJGOutput(MetaEvalBase.Output):
+    class GJGSystemCorrOutput(MetaEvalBase.Output):
         '''The dataclass to store the meta-evaluation results.
         
         Args:
@@ -16,12 +19,25 @@ class MetaEvalGJG(MetaEvalBase):
             ts (MetaEvalBase.Corr):
                 The correlation using Expected Wins-based human evaluation.
         '''
-        ts: MetaEvalBase.Corr = None
         ew: MetaEvalBase.Corr = None
+        ts: MetaEvalBase.Corr = None
+
+    @dataclass
+    class GJGSentenceCorrOutput(MetaEvalBase.Output):
+        '''The dataclass to store the meta-evaluation results.
+        
+        Args:
+            ts (MetaEvalBase.Corr):
+                The correlation using TrueSkill-based human evaluation.
+            ts (MetaEvalBase.Corr):
+                The correlation using Expected Wins-based human evaluation.
+        '''
+        corr: MetaEvalBase.Corr = None
 
     def __init__(self, config: MetaEvalBase.Config):
         super().__init__(config)
         self.system_data = self.load_system_data()
+        self.sentence_data = self.load_sentence_data()
 
     def load_system_data(self) -> dict[str, list]:
         '''Loads evaluation data and human scores.'''
@@ -61,7 +77,7 @@ class MetaEvalGJG(MetaEvalBase):
         ts_models = [line.split(' ')[2] for line in ts_table]
         ts_scores = [float(line.split(' ')[0]) for line in ts_table]
         ts_scores_reorder = [ts_scores[ts_models.index(m)] for m in ew_models]
-        data_dir = glob.glob('**/conll14/', recursive=True)[0]
+        data_dir = glob.glob('**/meta_eval_data/conll14/', recursive=True)[0]
         data = {
             'hypotheses': [],
             'references': [],
@@ -84,11 +100,59 @@ class MetaEvalGJG(MetaEvalBase):
         data['references'] = [ref0, ref1]
         return data
     
+    def load_xml(self, xml_path: str, target_models: list[str]):
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        human_scores = dict()
+        for child in root.find('error-correction-ranking-result'):
+            src_id = int(child.attrib['src-id'])
+            human_scores[src_id] = human_scores.get(
+                src_id, []
+            )
+            scores = [None] * len(target_models)
+            for trans in child:
+                systems = trans.attrib['system'].split()
+                rank = int(trans.attrib['rank'])
+                for sys in systems:
+                    if sys not in target_models:
+                        continue
+                    # Put the minus ranking as the score
+                    scores[target_models.index(sys)] = -rank
+            human_scores[src_id].append(scores)
+        human_scores = sorted(human_scores.items(), key=lambda x:x[0])
+        return human_scores
+    
     def load_sentence_data(self) -> dict[str, list]:
         '''TODO: Implement it.'''
-        return super().load_sentence_data()
+        data_dir = glob.glob('**/meta_eval_data/conll14/', recursive=True)[0]
+        score_dir = glob.glob('**/meta_eval_data/GJG15/', recursive=True)[0]
+        data = {
+            'hypotheses': [],
+            'references': [],
+            'human_score': [],
+            'models': self.MODELS,
+            'sources': []
+        }
+        data['human_score'] = self.load_xml(os.path.join(score_dir, 'judgments.xml'), self.MODELS)
+        src_ids = [h[0] for h in data['human_score']]
+        data['human_score'] = [h[1] for h in data['human_score']]
+        sentences = []
+        for model in self.MODELS:
+            sents = open(os.path.join(data_dir, 'official_submissions', model)).read().rstrip().split('\n')
+            sentences.append([sents[i] for i in src_ids])
+        data['hypotheses'] = sentences
+        input_sents = open(os.path.join(data_dir, 'official_submissions', 'INPUT')).read().rstrip().split('\n')
+        data['sources'] = [input_sents[i] for i in src_ids]
+        ref0 = open(os.path.join(data_dir, 'REF0')).read().rstrip().split('\n')
+        ref1 = open(os.path.join(data_dir, 'REF1')).read().rstrip().split('\n')
+        data['references'] = [
+            [ref0[i] for i in src_ids],
+            [ref1[i] for i in src_ids],
+        ]
+
+        return data
     
-    def corr_system(self, metric: MetricBase) -> "GJGOutput":
+    def corr_system(self, metric: MetricBase) -> "GJGSystemCorrOutput":
         '''Compute system-level correlations.
 
         Args:
@@ -98,26 +162,68 @@ class MetaEvalGJG(MetaEvalBase):
             GJGOutput: The correlations.
         '''
         data = self.system_data
-        my_scores = []
-        for model_id, model in enumerate(data['models']):
-            score = self.calc_system_score(
-                metric,
-                data['sources'],
-                data['hypotheses'][model_id],
-                data['references']
-            )
-            my_scores.append(score)
-        corrs = []
-        for score_id in ['ew', 'ts']:
-            corr = self.Corr()
-            corr.pearson = pearsonr(my_scores, data['human_score'][score_id])[0].item()
-            corr.spearman = spearmanr(my_scores, data['human_score'][score_id])[0].item()
-            corrs.append(corr)
-        return self.GJGOutput(
+        metric_scores = [
+            self.calc_system_score(
+                metric=metric,
+                sources=data['sources'],
+                hypotheses=hyps,
+                references=data['references']
+            ) for hyps in data['hypotheses']
+        ]
+        corrs = [
+            self.Corr(
+                pearson=float(pearsonr(metric_scores, data['human_score'][name])[0]),
+                spearman=float(spearmanr(metric_scores, data['human_score'][name])[0])
+            ) for name in ['ew', 'ts']
+        ]
+        return self.GJGSystemCorrOutput(
             ew=corrs[0],
             ts=corrs[1]
         )
         
-    def corr_sentence(self, scorer: MetricBase):
-        '''TODO: Implement it.'''
-        return super().corr_sentence(scorer)
+    def corr_sentence(self, metric: MetricBase) -> "GJGSentenceCorrOutput":
+        '''Compute sentence-level correlations.
+
+        Args:
+            metric (MetricBase): The metric to be evaluated.
+
+        Returns:
+            SEEDASentenceCorrOutput: The correlations.
+        '''
+        data = self.sentence_data
+        metric_scores = [
+            self.calc_sentence_score(
+                metric=metric,
+                sources=data['sources'],
+                hypotheses=hyps,
+                references=data['references']
+            ) for hyps in data['hypotheses']
+        ]
+        num_sents = len(data['sources'])
+        num_sys = len(data['models'])
+        human_scores = data['human_score']
+        agree = 0
+        not_agree = 0
+        denominator = 0
+        for src_id in range(num_sents):
+            for annotate_id in range(len(human_scores[src_id])):
+                for sys1, sys2 in itertools.combinations(range(num_sys), 2):
+                    m1 = metric_scores[sys1][src_id]
+                    m2 = metric_scores[sys2][src_id]
+                    h1 = human_scores[src_id][annotate_id][sys1]
+                    h2 = human_scores[src_id][annotate_id][sys2]
+                    if None in [h1, h2]:
+                        continue
+                    if h1 == h2:
+                        continue
+                    denominator += 1
+                    if (m1 <= m2) == (h1 <= h2):
+                        agree += 1
+                    else:
+                        not_agree += 1
+        corr = self.Corr()
+        corr.accuracy = agree / denominator
+        corr.kendall = (agree - not_agree) / denominator
+        return self.GJGSentenceCorrOutput(
+            corr=corr
+        )
