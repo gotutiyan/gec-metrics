@@ -2,56 +2,12 @@ import argparse
 import glob
 import os
 from scipy.stats import pearsonr, spearmanr
-from meta_eval_data.SEEDA.utils.corr_sentence import make_h_mtx, calc_corr
 from dataclasses import dataclass
 import itertools
 from .base import MetaEvalBase
 from gec_metrics.metrics import MetricBase
-
-# This function is based on the official one (https://github.com/tmu-nlp/SEEDA),
-#   but fixed to input score as list[list[float]], not file paths.
-def make_m_mtx(
-    metric_score: list[list[float]],
-    targets: list[str],
-    order: str = 'higher'
-):
-    m_mtx = {}
-    N = len(targets)
-    src_ids = [11, 12, 28, 35, 36, 45, 46, 52, 54, 58, 62, 64, 65, 68, 70, 73, 75, 76, 85, 87, 93, 96, 98, 105, 111, 115, 116, 118, 125, 130, 131, 132, 133, 136, 138, 143, 145, 155, 157, 160, 162, 163, 168, 170, 173, 176, 178, 179, 180, 197, 198, 200, 201, 202, 205, 206, 207, 209, 212, 213, 219, 226, 228, 229, 231, 233, 236, 240, 243, 247, 252, 254, 258, 260, 261, 266, 268, 270, 272, 274, 282, 284, 288, 295, 300, 302, 304, 310, 312, 313, 315, 316, 318, 319, 321, 327, 329, 336, 339, 349, 351, 355, 363, 371, 373, 380, 383, 389, 392, 395, 396, 398, 400, 401, 402, 407, 415, 424, 426, 428, 431, 436, 441, 446, 447, 449, 450, 451, 452, 454, 455, 458, 461, 471, 474, 476, 485, 488, 490, 494, 501, 502, 504, 505, 506, 507, 510, 511, 521, 525, 528, 536, 537, 538, 539, 552, 553, 558, 579, 590, 592, 595, 597, 603, 606, 609, 610, 614, 615, 620, 623, 625, 627, 631, 636, 639, 645, 646, 647, 648, 649, 651, 654, 658, 664, 665, 668, 673, 674, 675, 678, 681, 682, 683, 686, 697, 700, 701, 702, 705, 707, 710, 711, 715, 717, 719, 720, 724, 725, 726, 727, 730, 731, 734, 743, 744, 745, 749, 754, 756, 759, 765, 766, 769, 771, 772, 777, 778, 779, 780, 781, 782, 783, 784, 787, 788, 791, 792, 796, 797, 799, 806, 808, 810, 811, 812, 817, 818, 823, 824, 825, 827, 828, 830, 835, 837, 838, 842, 844, 846, 849, 851, 853, 856, 857, 859, 867, 872, 873, 875, 881, 886, 887, 888, 889, 891, 895, 901, 902, 905, 910, 911, 912, 913, 916, 918, 923, 924, 930, 933, 936, 938, 942, 943, 950, 961, 962, 963, 968, 973, 974, 977, 979, 982, 998, 999, 1001, 1003, 1012, 1016, 1017, 1024, 1031, 1038, 1040, 1051, 1052, 1055, 1056, 1057, 1063, 1064, 1065, 1069, 1070, 1075, 1081, 1083, 1084, 1085, 1088, 1089, 1090, 1091, 1099, 1100, 1104, 1106, 1109, 1110, 1111, 1112, 1119, 1128, 1140, 1142, 1143, 1145, 1146, 1151, 1152, 1154, 1160, 1162, 1168, 1170, 1176, 1184, 1195, 1196, 1202, 1205, 1206, 1207, 1209, 1211, 1212, 1213, 1222, 1224, 1229, 1231, 1234, 1245, 1247, 1249, 1260, 1261, 1263, 1264, 1265, 1275, 1288, 1290, 1294, 1297, 1298, 1300, 1303, 1306, 1310]
-    
-    set = metric_score
-
-    scores = []
-    for i in range(len(src_ids)):
-        score = []
-        for j in range(N):
-            score.append(set[j][i])
-        scores.append(score)
-
-    i = 0
-    for src_id, score in zip(src_ids, scores):
-        sub_mtx = [[None for _ in range(N)] for _ in range(N)]
-        comb = itertools.combinations(range(N), 2)
-        for c in comb:
-            t1 = c[0]
-            t2 = c[1]
-            score1 = scores[i][t1]
-            score2 = scores[i][t2]
-            if score1 > score2:
-                if order == 'higher':
-                    sub_mtx[t1][t2] = 1
-                else:
-                    sub_mtx[t1][t2] = -1
-            else:
-                if order == 'higher':
-                    sub_mtx[t1][t2] = -1
-                else:
-                    sub_mtx[t1][t2] = 1
-        m_mtx[str(src_id)] = sub_mtx
-        i += 1
-
-    m_mtx = {k: m_mtx[k] for k in sorted(m_mtx.keys())}
-    return m_mtx
+import xml.etree.ElementTree as ET
+import numpy as np
 
 class MetaEvalSEEDA(MetaEvalBase):
     MODELS = ['BART', 'BERT-fuse', 'GECToR-BERT', 'GECToR-ens', 'GPT-3.5', 'INPUT', 'LM-Critic', 'PIE', 'REF-F', 'REF-M', 'Riken-Tohoku', 'T5', 'TemplateGEC', 'TransGEC', 'UEDIN-MS']
@@ -70,10 +26,10 @@ class MetaEvalSEEDA(MetaEvalBase):
             ts_edit (MetaEvalBase.Corr):
                 SEEDA-E correlation based on TrueSkill-based human evaluation.
         '''
-        ew_sent: MetaEvalBase.Corr = None
         ew_edit: MetaEvalBase.Corr = None
-        ts_sent: MetaEvalBase.Corr = None
+        ew_sent: MetaEvalBase.Corr = None
         ts_edit: MetaEvalBase.Corr = None
+        ts_sent: MetaEvalBase.Corr = None
 
     @dataclass
     class SEEDASentenceCorrOutput(MetaEvalBase.Output):
@@ -134,6 +90,34 @@ class MetaEvalSEEDA(MetaEvalBase):
         data['references'] = [ref0, ref1]
         return data
     
+    def load_xml(self, xml_path: str, target_models: list[str]):
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        # The human scores will be 
+        #   human_scores[src_id][annotation_id][sys_id].
+        # Beucase multiple annotations may exist in the same sentence.
+        # Each element contains None or a minus rank of the system.
+        human_scores = dict()
+        for child in root.find('error-correction-ranking-result'):
+            src_id = int(child.attrib['src-id'])
+            human_scores[src_id] = human_scores.get(
+                src_id, []
+            )
+            scores = [None] * len(target_models)
+            for trans in child:
+                systems = trans.attrib['system'].split()
+                rank = int(trans.attrib['rank'])
+                for sys in systems:
+                    if sys not in target_models:
+                        continue
+                    # Put the minus ranking as a score
+                    scores[target_models.index(sys)] = -rank
+            human_scores[src_id].append(scores)
+        # Sort by source id.
+        human_scores = sorted(human_scores.items(), key=lambda x:x[0])
+        human_scores = [h[1] for h in human_scores]
+        return human_scores
+    
     def load_sentence_data(self) -> dict[str, int]:
         '''Load evaluation data and human scores for sentence-level meta-evaluation.'''
         subset_dir = glob.glob('**/SEEDA/outputs/subset/', recursive=True)[0]
@@ -148,13 +132,20 @@ class MetaEvalSEEDA(MetaEvalBase):
         models = [m for m in self.MODELS if m not in del_systems]
         data = {
             'hypotheses': [],
+            'human_score': dict(),
             'human_score_paths': dict(),
             'models': models,
             'del_models': ['INPUT', 'REF-F', 'GPT-3.5'],
             'sources': []
         }
-        data['human_score_paths']['edit'] = glob.glob(data_dir + 'judgments_edit.xml')[0]
-        data['human_score_paths']['sent'] = glob.glob(data_dir + 'judgments_sent.xml')[0]
+        data['human_score']['edit'] = self.load_xml(
+            data_dir + 'judgments_edit.xml',
+            models
+        )
+        data['human_score']['sent'] = self.load_xml(
+            data_dir + 'judgments_sent.xml',
+            models
+        )
         for model in models:
             sents = open(os.path.join(subset_dir, model + '.txt')).read().rstrip().split('\n')
             data['hypotheses'].append(sents)
@@ -177,29 +168,30 @@ class MetaEvalSEEDA(MetaEvalBase):
             SEEDASystemCorrOutput: The correlations.
         '''
         data = self.system_data
-        my_scores = []
-        for model_id, model in enumerate(data['models']):
-            score = self.calc_system_score(
-                metric,
-                data['sources'],
-                data['hypotheses'][model_id],
-                data['references']
-            )
-            my_scores.append(score)
-        corrs = []
-        for score_id in self.SCORE_ID:
-            corr = self.Corr()
-            corr.pearson = pearsonr(my_scores, data['human_score'][score_id])[0].item()
-            corr.spearman = spearmanr(my_scores, data['human_score'][score_id])[0].item()
-            corrs.append(corr)
+        metric_scores = [
+            self.calc_system_score(
+                metric=metric,
+                sources=data['sources'],
+                hypotheses=hyps,
+                references=data['references']
+            ) for hyps in data['hypotheses']
+        ]
+        corrs = [
+            self.Corr(
+                pearson=float(pearsonr(metric_scores, data['human_score'][name])[0]),
+                spearman=float(spearmanr(metric_scores, data['human_score'][name])[0])
+            ) for name in self.SCORE_ID
+        ]
         return self.SEEDASystemCorrOutput(
             ew_edit=corrs[0],
             ew_sent=corrs[1],
             ts_edit=corrs[2],
-            ts_sent=corrs[3],
+            ts_sent=corrs[3]
         )
     
-    def corr_sentence(self, metric: MetricBase) -> 'SEEDASentenceCorrOutput':
+    def corr_sentence(
+        self, metric: MetricBase
+    ) -> "SEEDASentenceCorrOutput":
         '''Compute sentence-level correlations.
 
         Args:
@@ -209,23 +201,45 @@ class MetaEvalSEEDA(MetaEvalBase):
             SEEDASentenceCorrOutput: The correlations.
         '''
         data = self.sentence_data
-        metric_score = []
-        for model_id, model in enumerate(data['models']):
-            scores = self.calc_sentence_score(
-                metric,
-                data['sources'],
-                data['hypotheses'][model_id],
-                data['references']
-            )
-            metric_score.append(scores)
-            
+        metric_scores = [
+            self.calc_sentence_score(
+                metric=metric,
+                sources=data['sources'],
+                hypotheses=hyps,
+                references=data['references']
+            ) for hyps in data['hypotheses']
+        ]
         corrs = []
-        for mode in ['edit', 'sent']:
-            h_mtx = make_h_mtx(data['human_score_paths'][mode], data['models'], data['del_models'])
-            m_mtx = make_m_mtx(metric_score, data['models'])
-            acc, ken = calc_corr(h_mtx, m_mtx)
-            score = self.Corr(accuracy=acc, kendall=ken)
-            corrs.append(score)
+        num_sents = len(data['sources'])
+        num_sys = len(data['models'])
+        for name in ['edit', 'sent']:
+            human_scores = data['human_score'][name]
+            agree = 0
+            not_agree = 0
+            denominator = 0
+
+            for src_id in range(num_sents):
+                for annotate_id in range(len(human_scores[src_id])):
+                    for sys1, sys2 in itertools.combinations(range(num_sys), 2):
+                        m1 = metric_scores[sys1][src_id]
+                        m2 = metric_scores[sys2][src_id]
+                        # The human rank is minus ranking value,
+                        #   so higher values indicate higher quality.
+                        h1 = human_scores[src_id][annotate_id][sys1]
+                        h2 = human_scores[src_id][annotate_id][sys2]
+                        if None in [h1, h2]:
+                            continue
+                        if h1 == h2:
+                            continue
+                        denominator += 1
+                        if (m1 <= m2) == (h1 <= h2):
+                            agree += 1
+                        else:
+                            not_agree += 1
+            corr = self.Corr()
+            corr.accuracy = agree / denominator
+            corr.kendall = (agree - not_agree) / denominator
+            corrs.append(corr)
         return self.SEEDASentenceCorrOutput(
             edit=corrs[0],
             sent=corrs[1]
