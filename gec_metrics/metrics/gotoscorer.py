@@ -114,7 +114,7 @@ class GoToScorer(ERRANT):
             ))
         return new_chunks
         
-    def verbose_score_sentence(
+    def score_base(
         self,
         sources: list[str],
         hypotheses: list[str],

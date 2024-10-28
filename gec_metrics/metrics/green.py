@@ -78,7 +78,7 @@ class GREEN(MetricBaseForReferenceBased):
         Returns:
             float: The corpus-level scores.
         '''
-        verbose_scores = self.verbose_score_sentence(
+        verbose_scores = self.score_base(
             sources,
             hypotheses,
             references
@@ -113,7 +113,7 @@ class GREEN(MetricBaseForReferenceBased):
         Returns:
             list[float]: The sentence-level scores.
         '''
-        verbose_scores = self.verbose_score_sentence(
+        verbose_scores = self.score_base(
             sources,
             hypotheses,
             references
@@ -130,7 +130,7 @@ class GREEN(MetricBaseForReferenceBased):
             scores.append(self.aggregate_score(best_score))
         return scores
         
-    def verbose_score_sentence(
+    def score_base(
         self,
         sources: list[str],
         hypotheses: list[str],

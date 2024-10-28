@@ -67,7 +67,7 @@ class GLEU(GREEN):
         Returns:
             float: The corpus-level scores.
         '''
-        verbose_scores, hyp_lens, ref_lens = self.verbose_score_sentence(
+        verbose_scores, hyp_lens, ref_lens = self.score_base(
             sources,
             hypotheses,
             references
@@ -115,7 +115,7 @@ class GLEU(GREEN):
         self.config.iter = 1
         scores = [[] for _ in range(len(sources))]  # The shape will be (num_sents, num_iters=1)
         for i in range(len(references)):
-            verbose_scores, hyp_lens, ref_lens = self.verbose_score_sentence(
+            verbose_scores, hyp_lens, ref_lens = self.score_base(
                 sources,
                 hypotheses,
                 references[i:i+1]  # Use only i-th reference
@@ -134,7 +134,7 @@ class GLEU(GREEN):
         self.config.iter = original_iter
         return scores
         
-    def verbose_score_sentence(
+    def score_base(
         self,
         sources: list[str],
         hypotheses: list[str],
@@ -216,7 +216,7 @@ class GLEU(GREEN):
         return scores, hyp_lens, ref_lens
     
 class GLEUOfficial(GLEU):
-    def verbose_score_sentence(
+    def score_base(
         self,
         sources: list[str],
         hypotheses: list[str],

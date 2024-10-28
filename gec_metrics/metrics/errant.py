@@ -87,7 +87,29 @@ class ERRANT(MetricBaseForReferenceBased):
         Returns:
             float: The corpus-level F-beta score.
         '''
-        verbose_scores = self.verbose_score_sentence(
+        verbose_scores = self.score_corpus_verbose(
+            sources, hypotheses, references
+        )
+        return verbose_scores.f
+
+    def score_corpus_verbose(
+        self,
+        sources: list[str],
+        hypotheses: list[str],
+        references: list[list[str]]
+    ) -> "Score":
+        '''Calculate a corpus level score by aggregating verbose scores.
+
+        Args:
+            sources (list[str]): Source sentence.
+            hypothesis (list[str]): Corrected sentences.
+            references (list[list[str]]): Reference sentences.
+                The shape is (the number of references, the number of sentences).
+        
+        Returns:
+            Score: It contains TP, FP, FN, Precision, Recall, and F-beta.
+        '''
+        verbose_scores = self.score_base(
             sources,
             hypotheses,
             references
@@ -103,7 +125,7 @@ class ERRANT(MetricBaseForReferenceBased):
                 if best_score is None or (score + best_score) < (score + agg_score):
                     best_score = agg_score
             score += best_score
-        return score.f
+        return score
         
     def score_sentence(
         self,
@@ -122,7 +144,29 @@ class ERRANT(MetricBaseForReferenceBased):
         Returns:
             list[float]: The sentence-level F-beta scores.
         '''
-        verbose_scores = self.verbose_score_sentence(
+        verbose_scores = self.score_sentence_verbose(
+            sources, hypotheses, references
+        )
+        return [s.f for s in verbose_scores]
+    
+    def score_sentence_verbose(
+        self,
+        sources: list[str],
+        hypotheses: list[str],
+        references: list[list[str]]
+    ) -> list["Score"]:
+        '''Calculate sentence level scores by aggregating verbose scores.
+
+        Args:
+            sources (list[str]): Source sentence.
+            hypothesis (list[str]): Corrected sentences.
+            references (list[list[str]]): Reference sentences.
+                The shape is (the number of references, the number of sentences).
+        
+        Returns:
+            list[Score]: It contains TP, FP, FN, Precision, Recall, and F-beta.
+        '''
+        verbose_scores = self.score_base(
             sources,
             hypotheses,
             references
@@ -134,10 +178,10 @@ class ERRANT(MetricBaseForReferenceBased):
                 agg_score = self.aggregate_to_overall(v_score_for_ref)
                 if best_score is None or best_score < agg_score:
                     best_score = agg_score
-            scores.append(best_score.f)
+            scores.append(best_score)
         return scores
     
-    def verbose_score_sentence(
+    def score_base(
         self,
         sources: list[str],
         hypotheses: list[str],
