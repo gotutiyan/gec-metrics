@@ -65,5 +65,4 @@ def get_parser():
     return args
 
 if __name__ == '__main__':
-    # args = get_parser()
     main()

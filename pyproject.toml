@@ -24,9 +24,11 @@ readme = "README.md"
 license = {file = "LICENSE"}
 
 [project.scripts]
-make-subset-ref = "gec_metrics.utils.make_subset_reference:main"
-m2-to-raw = "gec_metrics.utils.m2_to_raw:main"
-gen-weights-for-goto = "gec_metrics.utils.gen_weight_for_goto:main"
+gecmetrics-eval = "gec_metrics.cli.evaluate:main"
+gecmetrics-gen-config = "gec_metrics.cli.gen_default_config:main"
+gecmetrics-gen-subset = "gec_metrics.cli.gen_subset:main"
+gecmetrics-m2-to-raw = "gec_metrics.cli.m2_to_raw:main"
+gecmetrics-gen-gotoscorer-weight = "gec_metrics.cli.gen_gotoscorer_weight:main"
 
 [tool.pytest.ini_options]
 python_files = [

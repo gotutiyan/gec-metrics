@@ -166,11 +166,15 @@ class GLEU(GREEN):
         num_sents = len(sources)
         num_refs = len(references)
         all_ref_lens = [
-            [len(r.split(' ')) for r in ref] for ref in references
+            [len(r.split(' ')) if self.config.unit == 'word' else len(r) for r in ref] \
+                for ref in references
         ]
         scores = []  # The shape will be (num_iters, num_sents, max_ngram)
         ref_lens = []  # (num_iters, num_sents)
-        hyp_lens = [[len(h.split(' ')) for h in hypotheses]] * self.config.iter  # (num_iters, num_sents)
+        hyp_lens = [
+            [len(h.split(' ')) if self.config.unit == 'word' else len(h) \
+                for h in hypotheses]
+        ] * self.config.iter  # (num_iters, num_sents)
         cached_score = np.zeros((num_refs, num_sents)).tolist()
 
         for sent_id in range(num_sents):
