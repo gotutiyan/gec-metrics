@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eu
 
-DIR=meta_eval_data2/
+DIR=meta_eval_data/
 mkdir -p $DIR
 git clone https://github.com/tmu-nlp/SEEDA.git $DIR/SEEDA
 

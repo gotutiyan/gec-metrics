@@ -121,7 +121,7 @@ scorer = metric_cls(metric_cls.Config(
     weight_file=''  # It is required if no_weight=False
 ))
 ```
-You can generate a weight file via `gecmetrics-gen-goto-weight`.  
+You can generate a weight file via `gecmetrics-gen-gotoscorer-weight`.  
 The output is a JSON file.  
 ```sh
 gecmetrics-gen-gotoscorer-weight \

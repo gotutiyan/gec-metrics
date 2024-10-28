@@ -13,6 +13,7 @@ dependencies = [
   "pytest >= 7.4.2, ==7.*",
   "bert-score >= 0.3.13, ==0.*",
   "errant >= 3.0.0, ==3.*",
+  "python-Levenshtein >= 0.26.1, ==0.*",
   "gecommon@git+https://github.com/gotutiyan/gecommon"
 ]
 requires-python = ">=3.9"
