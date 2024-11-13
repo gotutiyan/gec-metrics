@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from .base import MetaEvalBase
 import xml.etree.ElementTree as ET
 import itertools
+from .utils import read_lines
 
 class MetaEvalGJG(MetaEvalBase):
     MODELS = ['AMU', 'RAC', 'CAMB', 'CUUI', 'POST', 'UFC', 'PKU', 'UMC', 'IITB', 'SJTU', 'INPUT', 'NTHU', 'IPN']
@@ -90,13 +91,13 @@ class MetaEvalGJG(MetaEvalBase):
         }
         sentences = []
         for model in ew_models:
-            sents = open(os.path.join(data_dir, 'official_submissions', model)).read().rstrip().split('\n')
+            sents = read_lines(os.path.join(data_dir, 'official_submissions', model))
             sentences.append(sents)
         data['hypotheses'] = sentences
-        input_sents = open(os.path.join(data_dir, 'official_submissions', 'INPUT')).read().rstrip().split('\n')
+        input_sents = read_lines(os.path.join(data_dir, 'official_submissions', 'INPUT'))
         data['sources'] = input_sents
-        ref0 = open(os.path.join(data_dir, 'REF0')).read().rstrip().split('\n')
-        ref1 = open(os.path.join(data_dir, 'REF1')).read().rstrip().split('\n')
+        ref0 = read_lines(os.path.join(data_dir, 'REF0'))
+        ref1 = read_lines(os.path.join(data_dir, 'REF1'))
         data['references'] = [ref0, ref1]
         return data
     
@@ -138,13 +139,13 @@ class MetaEvalGJG(MetaEvalBase):
         data['human_score'] = [h[1] for h in data['human_score']]
         sentences = []
         for model in self.MODELS:
-            sents = open(os.path.join(data_dir, 'official_submissions', model)).read().rstrip().split('\n')
+            sents = read_lines(os.path.join(data_dir, 'official_submissions', model))
             sentences.append([sents[i] for i in src_ids])
         data['hypotheses'] = sentences
-        input_sents = open(os.path.join(data_dir, 'official_submissions', 'INPUT')).read().rstrip().split('\n')
+        input_sents = read_lines(os.path.join(data_dir, 'official_submissions', 'INPUT'))
         data['sources'] = [input_sents[i] for i in src_ids]
-        ref0 = open(os.path.join(data_dir, 'REF0')).read().rstrip().split('\n')
-        ref1 = open(os.path.join(data_dir, 'REF1')).read().rstrip().split('\n')
+        ref0 = read_lines(os.path.join(data_dir, 'REF0'))
+        ref1 = read_lines(os.path.join(data_dir, 'REF1'))
         data['references'] = [
             [ref0[i] for i in src_ids],
             [ref1[i] for i in src_ids],

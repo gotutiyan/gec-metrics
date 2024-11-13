@@ -8,6 +8,7 @@ from .base import MetaEvalBase
 from gec_metrics.metrics import MetricBase
 import xml.etree.ElementTree as ET
 import numpy as np
+from .utils import read_lines
 
 class MetaEvalSEEDA(MetaEvalBase):
     MODELS = ['BART', 'BERT-fuse', 'GECToR-BERT', 'GECToR-ens', 'GPT-3.5', 'INPUT', 'LM-Critic', 'PIE', 'REF-F', 'REF-M', 'Riken-Tohoku', 'T5', 'TemplateGEC', 'TransGEC', 'UEDIN-MS']
@@ -72,21 +73,21 @@ class MetaEvalSEEDA(MetaEvalBase):
             'sources': []
         }
         for model in models:
-            sents = open(os.path.join(subset_dir, model + '.txt')).read().rstrip().split('\n')
+            sents = read_lines(os.path.join(subset_dir, model + '.txt'))
             data['hypotheses'].append(sents)
         
         score_dir = glob.glob('**/SEEDA/scores/human', recursive=True)[0]
         for score_id in self.SCORE_ID:
-            scores = list(map(float, open(
+            scores = list(map(float, read_lines(
                 os.path.join(score_dir, score_id + '.txt')
-            ).read().rstrip().split('\n')))
+            )))
             scores = [s for i, s in enumerate(scores) if self.MODELS[i] not in del_systems]
             data['human_score'][score_id] = scores
 
-        data['sources'] = open(os.path.join(subset_dir, 'INPUT.txt')).read().rstrip().split('\n')
+        data['sources'] = read_lines(os.path.join(subset_dir, 'INPUT.txt'))
 
-        ref0 = open(os.path.join(subset_dir, 'REF0.txt')).read().rstrip().split('\n')
-        ref1 = open(os.path.join(subset_dir, 'REF1.txt')).read().rstrip().split('\n')
+        ref0 = read_lines(os.path.join(subset_dir, 'REF0.txt'))
+        ref1 = read_lines(os.path.join(subset_dir, 'REF1.txt'))
         data['references'] = [ref0, ref1]
         return data
     
@@ -147,14 +148,14 @@ class MetaEvalSEEDA(MetaEvalBase):
             models
         )
         for model in models:
-            sents = open(os.path.join(subset_dir, model + '.txt')).read().rstrip().split('\n')
+            sents = read_lines(os.path.join(subset_dir, model + '.txt'))
             data['hypotheses'].append(sents)
         
-        input_sents = open(os.path.join(subset_dir, 'INPUT.txt')).read().rstrip().split('\n')
+        input_sents = read_lines(os.path.join(subset_dir, 'INPUT.txt'))
         data['sources'] = input_sents
 
-        ref0 = open(os.path.join(subset_dir, 'REF0.txt')).read().rstrip().split('\n')
-        ref1 = open(os.path.join(subset_dir, 'REF1.txt')).read().rstrip().split('\n')
+        ref0 = read_lines(os.path.join(subset_dir, 'REF0.txt'))
+        ref1 = read_lines(os.path.join(subset_dir, 'REF1.txt'))
         data['references'] = [ref0, ref1]
         return data
     
