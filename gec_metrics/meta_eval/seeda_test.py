@@ -48,4 +48,27 @@ def test_corr_sentence():
     for k in gold.__dict__:
         assert math.isclose(gold.__dict__[k].accuracy, out.__dict__[k].accuracy, rel_tol=1e-6)
         assert math.isclose(gold.__dict__[k].kendall, out.__dict__[k].kendall, rel_tol=1e-6)
+
+def test_window_analysis():
+    scorer = Length(Length.Config())
+    meta_seeda = MetaEvalSEEDA(MetaEvalSEEDA.Config())
+    out = meta_seeda.window_analysis_system(scorer, window=4)
+
+    corr_cls = MetaEvalSEEDA.Corr
+    gold = {
+        (0, 3): corr_cls(pearson=-0.12719090478691203, spearman=0.19999999999999998),
+        (1, 4): corr_cls(pearson=0.5900362463225375, spearman=0.7999999999999999),
+        (2, 5): corr_cls(pearson=0.15518369973793955, spearman=0.39999999999999997),
+        (3, 6): corr_cls(pearson=0.1205407475751627, spearman=0.39999999999999997),
+        (4, 7): corr_cls(pearson=0.02436579076767783, spearman=0.0),
+        (5, 8): corr_cls(pearson=-0.02121433684516863, spearman=0.19999999999999998),
+        (6, 9): corr_cls(pearson=-0.16182645121353734, spearman=-0.39999999999999997),
+        (7, 10): corr_cls(pearson=-0.23114390326454237, spearman=-0.39999999999999997),
+        (8, 11): corr_cls(pearson=0.40786665626270313, spearman=0.39999999999999997)
+    }
+    out_ts_edit = out.ts_edit
+    for k in out_ts_edit.keys():
+        assert math.isclose(gold[k].pearson, out_ts_edit[k].pearson, rel_tol=1e-6)
+        assert math.isclose(gold[k].spearman, out_ts_edit[k].spearman, rel_tol=1e-6)
+
     

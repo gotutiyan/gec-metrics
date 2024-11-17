@@ -238,7 +238,8 @@ meta_eval_data/
 
 ### SEEDA: [[Kobayashi+ 24]](https://direct.mit.edu/tacl/article/doi/10.1162/tacl_a_00676/123651/Revisiting-Meta-evaluation-for-Grammatical-Error)
 The examples below uses ERRANT as a metric, but can also use other metrics based on `gec_metrics.metrics.MetricBase`.  
-- `ew_` means using ExpectedWins human evaluation scores and `ts_` means using TrueSkill.
+- `ew_*` means using ExpectedWins human evaluation scores and `ts_*` means using TrueSkill.
+- `*_edit` and `*_sent` means SEEDA-E and SEEDA-S.
 
 ```python
 from gec_metrics.meta_eval import MetaEvalSEEDA
@@ -279,6 +280,28 @@ results = meta_seeda.corr_sentence(scorer)
 #                                   spearman=None,
 #                                   accuracy=0.6734561494551116,
 #                                   kendall=0.3469122989102231))
+```
+
+The window analysis can be done by `window_analysis_system()`.  
+- `ew_*` uses Expected Wins human evaluation scores and `ts_*` uses TrueSkill.
+- `*_edit` and `*_sent` means SEEDA-E and SEEDA-S.
+- Each is a dictionary: `{(start_rank, end_rank): MetaEvalSEEDA.Corr}`.
+```py
+from gec_metrics.meta_eval import MetaEvalSEEDA
+from gec_metrics import get_metric
+metric_cls = get_metric('gleu')
+scorer = metric_cls(metric_cls.Config())
+meta_seeda = MetaEvalSEEDA(
+    MetaEvalSEEDA.Config(system='base')
+)
+results = meta_seeda.window_analysis_system(scorer, window=4)
+assert results.ew_edit is not None
+assert results.ew_sent is not None
+assert results.ts_edit is not None
+assert results.ts_sent is not None
+
+for k, v in results.ts_sent.items():
+    print(f'From {k[0]} to {k[1]}: {v.pearson=}, {v.spearman=}')
 ```
 
 ### GJG15: [[Grundkiewicz+ 15]](https://aclanthology.org/D15-1052/)

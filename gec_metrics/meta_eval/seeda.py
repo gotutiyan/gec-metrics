@@ -33,6 +33,25 @@ class MetaEvalSEEDA(MetaEvalBase):
         ts_sent: MetaEvalBase.Corr = None
 
     @dataclass
+    class SEEDAWindowAnalysisSystemCorrOutput(MetaEvalBase.Output):
+        '''The dataclass to store system-level correlations.
+
+        Args:
+            ew_sent (MetaEvalBase.Corr):
+                SEEDA-S correlation based on Expected Wins-based human evaluation.
+            ew_edit (MetaEvalBase.Corr):
+                SEEDA-E correlation based on Expected Wins-based human evaluation.
+            ts_sent (MetaEvalBase.Corr):
+                SEEDA-S correlation based on TrueSkill-based human evaluation.
+            ts_edit (MetaEvalBase.Corr):
+                SEEDA-E correlation based on TrueSkill-based human evaluation.
+        '''
+        ew_edit: dict = None
+        ew_sent: dict = None
+        ts_edit: dict = None
+        ts_sent: dict = None
+
+    @dataclass
     class SEEDASentenceCorrOutput(MetaEvalBase.Output):
         '''The dataclass to store sentence-level correlations.
 
@@ -244,4 +263,60 @@ class MetaEvalSEEDA(MetaEvalBase):
         return self.SEEDASentenceCorrOutput(
             edit=corrs[0],
             sent=corrs[1]
+        )
+    
+    def window_analysis_system(
+        self,
+        metric: MetricBase,
+        window: int=4
+    ) -> "SEEDAWindowAnalysisSystemCorrOutput":
+        '''System-level window analysis
+
+        Args:
+            metric (MetricBase): The metric to be evaluated.
+            window (int): The window size.
+
+        Returns:
+            SEEDAWindowAnalysisSystemCorrOutput: The correlations.
+                - Contains .ew_edit, .ew_sent, .ts_edit, .ts_sent.
+                - Each is a dictinary: {(start_rank, end_rank): Corr}.
+        '''
+        data = self.system_data
+        num_systems = len(data['hypotheses'])
+        assert 2 <= window <= num_systems
+        metric_scores = [
+            self.calc_system_score(
+                metric=metric,
+                sources=data['sources'],
+                hypotheses=hyps,
+                references=data['references']
+            ) for hyps in data['hypotheses']
+        ]
+        corrs = []
+        for name in self.SCORE_ID:
+            raw_h_score = data['human_score'][name]
+            # Sort both metric's and human's scores by the human score
+            scores = sorted(
+                list(zip(metric_scores, raw_h_score)),
+                key=lambda x:x[1], reverse=True)
+            m_score = [s[0] for s in scores]
+            h_score = [s[1] for s in scores]
+            corr = [
+                self.Corr(
+                    pearson=float(pearsonr(
+                        m_score[i:i+window],
+                        h_score[i:i+window]
+                    )[0]),
+                    spearman=float(spearmanr(
+                        m_score[i:i+window],
+                        h_score[i:i+window]
+                    )[0])
+                ) for i in range(num_systems-window+1)
+            ]
+            corrs.append({(i, i+window-1): corr[i] for i in range(num_systems-window+1)})
+        return self.SEEDAWindowAnalysisSystemCorrOutput(
+            ew_edit=corrs[0],
+            ew_sent=corrs[1],
+            ts_edit=corrs[2],
+            ts_sent=corrs[3]
         )
