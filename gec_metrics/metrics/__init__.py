@@ -12,17 +12,25 @@ from .errant import ERRANT
 from .green import GREEN
 from .gotoscorer import GoToScorer
 
-__all__ = [
-    "MetricBase",
-    "MetricBaseForReferenceBased",
-    "MetricBaseForReferenceFree",
-    "MetricBaseForReferenceWoSource",
-    "Scribendi",
-    "IMPARA",
-    "SOME",
-    "GLEU",
-    "GLEUOfficial",
-    "ERRANT",
-    "GREEN",
-    "GoToScorer"
+METRIC_BASE_CLS = [
+    MetricBase,
+    MetricBaseForReferenceBased,
+    MetricBaseForReferenceFree,
+    MetricBaseForReferenceWoSource
 ]
+METRIC_CLS = [
+    Scribendi,
+    IMPARA,
+    SOME,
+    GLEU,
+    GLEUOfficial,
+    ERRANT,
+    GREEN,
+    GoToScorer
+]
+
+__all__ = [c.__name__ for c in METRIC_BASE_CLS + METRIC_CLS]
+
+METRIC_ID2CLS = {
+    c.__name__.lower(): c for c in METRIC_CLS
+}

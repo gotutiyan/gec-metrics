@@ -35,6 +35,3 @@ gecmetrics-gen-gotoscorer-weight = "gec_metrics.cli.gen_gotoscorer_weight:main"
 python_files = [
     "*_test.py"
 ]
-
-[tool.setuptools]
-packages = ["gec_metrics"]

@@ -242,15 +242,16 @@ The examples below uses ERRANT as a metric, but can also use other metrics based
 - `*_edit` and `*_sent` means SEEDA-E and SEEDA-S.
 
 ```python
-from gec_metrics.meta_eval import MetaEvalSEEDA
+from gec_metrics import get_meta_eval
 from gec_metrics import get_metric
 metric_cls = get_metric('gleu')
-scorer = metric_cls(metric_cls.Config())
-meta_seeda = MetaEvalSEEDA(
-    MetaEvalSEEDA.Config(system='base')
+metric = metric_cls(metric_cls.Config())
+meta_cls = get_meta_eval('seeda')
+meta_seeda = meta_cls(
+    meta_cls.Config(system='base')
 )
 # System correlation
-results = meta_seeda.corr_system(scorer)
+results = meta_seeda.corr_system(metric)
 # Output:
 # SEEDASystemCorrOutput(ew_edit=Corr(pearson=0.9007842791853424,
 #                                    spearman=0.9300699300699302,
@@ -270,7 +271,7 @@ results = meta_seeda.corr_system(scorer)
 #                                    kendall=None))
 
 # Sentence correlation
-results = meta_seeda.corr_sentence(scorer)
+results = meta_seeda.corr_sentence(metric)
 # Output:
 # SEEDASentenceCorrOutput(sent=Corr(pearson=None,
 #                                   spearman=None,
@@ -287,14 +288,15 @@ The window analysis can be done by `window_analysis_system()`.
 - `*_edit` and `*_sent` means SEEDA-E and SEEDA-S.
 - Each is a dictionary: `{(start_rank, end_rank): MetaEvalSEEDA.Corr}`.
 ```py
-from gec_metrics.meta_eval import MetaEvalSEEDA
+from gec_metrics import get_meta_eval
 from gec_metrics import get_metric
 metric_cls = get_metric('gleu')
-scorer = metric_cls(metric_cls.Config())
-meta_seeda = MetaEvalSEEDA(
-    MetaEvalSEEDA.Config(system='base')
+metric = metric_cls(metric_cls.Config())
+meta_cls = get_meta_eval('seeda')
+meta_seeda = meta_cls(
+    meta_cls.Config(system='base')
 )
-results = meta_seeda.window_analysis_system(scorer, window=4)
+results = meta_seeda.window_analysis_system(metric, window=4)
 assert results.ew_edit is not None
 assert results.ew_sent is not None
 assert results.ts_edit is not None
@@ -310,13 +312,14 @@ This is referred to `GJG15` in the SEEDA paper.
 Basically, TrueSkill ranking is used to compute the correlation.
 
 ```python
-from gec_metrics.meta_eval import MetaEvalGJG
+from gec_metrics import get_meta_eval
 from gec_metrics import get_metric
 metric_cls = get_metric('gleu')
-scorer = metric_cls(metric_cls.Config())
-meta_gjg = MetaEvalGJG(MetaEvalGJG.Config())
+metric = metric_cls(metric_cls.Config())
+meta_cls = get_meta_eval('gjg')
+meta_gjg = meta_cls(meta_cls.Config())
 # System correlation
-results = meta_gjg.corr_system(scorer)
+results = meta_gjg.corr_system(metric)
 # Output:
 # GJGSystemCorrOutput(ew=Corr(pearson=0.601290729078602,
 #                             spearman=0.5934065934065934,
@@ -327,7 +330,7 @@ results = meta_gjg.corr_system(scorer)
 #                             accuracy=None,
 #                             kendall=None))
 
-results = meta_gjg.corr_sentence(scorer)
+results = meta_gjg.corr_sentence(metric)
 # Output:
 # GJGSentenceCorrOutput(corr=Corr(pearson=None,
 #                                 spearman=None,

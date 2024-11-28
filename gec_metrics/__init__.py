@@ -1,23 +1,28 @@
-import gec_metrics.metrics
-from gec_metrics.metrics import MetricBase
-import inspect
+from .metrics import METRIC_ID2CLS, MetricBase
+from .meta_eval import METAEVAL_ID2CLS, MetaEvalBase
 
 def get_metric_ids() -> list[str]:
     '''Generate a list of ids with the class name in lower case.
     '''
-    metric_ids = [
-        elem[0].lower() for elem in inspect.getmembers(gec_metrics.metrics, inspect.isclass) \
-              if not elem[0].lower().startswith('metricbase')
-    ]
-    return metric_ids
+    ids = list(METRIC_ID2CLS.keys())
+    return ids
 
-def get_metric(metric_id: str) -> dict[str, MetricBase]:
+def get_metric(name: str) -> dict[str, MetricBase]:
     '''Generate a dictionary of ids and classes with the class name in lower case as the key.
     '''
-    if not metric_id in get_metric_ids():
-        raise ValueError(f'The metric_id should be {get_metric_ids()}.')
-    metric_dict = {
-        elem[0].lower(): elem[1] for elem in inspect.getmembers(gec_metrics.metrics, inspect.isclass) \
-              if not elem[0].lower().startswith('metricbase')
-    }
-    return metric_dict[metric_id]
+    if not name in get_metric_ids():
+        raise ValueError(f'The id should be {get_metric_ids()}.')
+    return METRIC_ID2CLS[name]
+
+def get_meta_eval_ids() -> list[str]:
+    '''Generate a list of ids with the class name in lower case.
+    '''
+    ids = list(METAEVAL_ID2CLS.keys())
+    return ids
+
+def get_meta_eval(name: str) -> dict[str, MetaEvalBase]:
+    '''Generate a dictionary of ids and classes with the class name in lower case as the key.
+    '''
+    if not name in get_meta_eval_ids():
+        raise ValueError(f'The id should be {get_meta_eval_ids()}.')
+    return METAEVAL_ID2CLS[name]
