@@ -81,6 +81,7 @@ class MetaEvalSEEDA(MetaEvalBase):
             'base': ['INPUT', 'REF-F', 'GPT-3.5'],
             '+INPUT': ['REF-F', 'GPT-3.5'],
             '+REF-F_GPT-3.5': ['INPUT'],
+            '+flunecy': ['INPUT'],  # an alias
             'all': []
         }[self.config.system]
         models = [m for m in self.MODELS if m not in del_systems]
