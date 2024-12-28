@@ -26,3 +26,10 @@ build-backend = "hatchling.build"
 dev = [
     "pytest>=8.3.4",
 ]
+
+[project.scripts]
+gecmetrics-eval = "gec_metrics.cli.evaluate:main"
+gecmetrics-gen-config = "gec_metrics.cli.gen_default_config:main"
+gecmetrics-gen-subset = "gec_metrics.cli.gen_subset:main"
+gecmetrics-m2-to-raw = "gec_metrics.cli.m2_to_raw:main"
+gecmetrics-gen-gotoscorer-weight = "gec_metrics.cli.gen_gotoscorer_weight:main"
