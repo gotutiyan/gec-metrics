@@ -1,37 +1,28 @@
-[build-system]
-requires = ["setuptools >= 61.0"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "gec_metrics"
-version = "0.0.1"
-dependencies = [
-  "transformers >= 4.39.0, ==4.*",
-  "torch >= 2.3.0, ==2.*",
-  "fuzzywuzzy >= 0.18.0, ==0.*",
-  "scipy >= 1.11.3, ==1.*",
-  "pytest >= 7.4.2, ==7.*",
-  "bert-score >= 0.3.13, ==0.*",
-  "errant >= 3.0.0, ==3.*",
-  "python-Levenshtein >= 0.26.1, ==0.*",
-  "gecommon@git+https://github.com/gotutiyan/gecommon"
-]
-requires-python = ">=3.9"
-authors = [
-    {name = "Takumi Goto"}
-]
+name = "gec-metrics"
+version = "0.1.0"
 description = "A library for Grammatical Error Correction evaluation."
 readme = "README.md"
-license = {file = "LICENSE"}
+authors = [
+    { name = "gotuiyan" }
+]
+requires-python = ">=3.11.0"
+dependencies = [
+    "bert-score>=0.3.13",
+    "errant>=3.0.0",
+    "fuzzywuzzy>=0.18.0",
+    "gecommon>=0.1.0",
+    "python-levenshtein>=0.26.1",
+    "scipy>=1.14.1",
+    "torch>=2.5.1",
+    "transformers>=4.47.1",
+]
 
-[project.scripts]
-gecmetrics-eval = "gec_metrics.cli.evaluate:main"
-gecmetrics-gen-config = "gec_metrics.cli.gen_default_config:main"
-gecmetrics-gen-subset = "gec_metrics.cli.gen_subset:main"
-gecmetrics-m2-to-raw = "gec_metrics.cli.m2_to_raw:main"
-gecmetrics-gen-gotoscorer-weight = "gec_metrics.cli.gen_gotoscorer_weight:main"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.pytest.ini_options]
-python_files = [
-    "*_test.py"
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4",
 ]
