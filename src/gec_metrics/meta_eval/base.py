@@ -4,7 +4,7 @@ from gec_metrics.metrics import (
     MetricBase,
     MetricBaseForReferenceBased,
     MetricBaseForReferenceFree,
-    MetricBaseForReferenceWoSource
+    MetricBaseForSourceFree
 )
 
 class MetaEvalBase(abc.ABC):
@@ -50,7 +50,7 @@ class MetaEvalBase(abc.ABC):
                 sources=sources,
                 hypotheses=hypotheses
             )
-        elif isinstance(metric, MetricBaseForReferenceWoSource):
+        elif isinstance(metric, MetricBaseForSourceFree):
             score = metric.score_corpus(
                 hypotheses=hypotheses,
                 references=references
@@ -75,7 +75,7 @@ class MetaEvalBase(abc.ABC):
                 sources=sources,
                 hypotheses=hypotheses
             )
-        elif isinstance(metric, MetricBaseForReferenceWoSource):
+        elif isinstance(metric, MetricBaseForSourceFree):
             scores = metric.score_sentence(
                 hypotheses=hypotheses,
                 references=references

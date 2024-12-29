@@ -1,5 +1,6 @@
 import abc
 from dataclasses import dataclass
+import errant
 
 class MetricBase(abc.ABC):
     @dataclass
@@ -7,6 +8,44 @@ class MetricBase(abc.ABC):
 
     def __init__(self, config: Config):
         self.config = config
+
+    def apply_edits(
+        self,
+        src: str,
+        edits: list[errant.edit.Edit]
+    ) -> str:
+        '''Edit the source by the edits.
+        
+        Args:
+            src (str): An input source sentence.
+            edits (list[Edit]): An edit sequence.
+        
+        Returns:
+            str: An edited sentence.
+        '''
+        # Firstly sort edits by start index.
+        edits = sorted(edits, key=lambda x:x.o_start)
+        offset = 0
+        tokens = src.split(' ')
+        for e in edits:
+            if e.o_start == -1:
+                continue
+            s_idx = e.o_start + offset
+            e_idx = e.o_end + offset
+            # Is deletion edit
+            if e.c_str == '':
+                tokens[s_idx:e_idx] = ['$DELETE']
+                offset -= (e.o_end - e.o_start) - 1
+            # Is insertion edit
+            elif e.o_start == e.o_end:
+                tokens[s_idx:e_idx] = e.c_str.split(' ')
+                offset += len(e.c_str.split())
+            # Otherwise replacement edit
+            else:
+                tokens[s_idx:e_idx] = e.c_str.split(' ')
+                offset += len(e.c_str.split(' ')) - (e.o_end - e.o_start)
+        trg = ' '.join(tokens).replace(' $DELETE', '').replace('$DELETE ', '')
+        return trg
 
 class MetricBaseForReferenceBased(MetricBase, metaclass=abc.ABCMeta):
     @dataclass
@@ -173,7 +212,7 @@ class MetricBaseForReferenceFree(MetricBase, metaclass=abc.ABCMeta):
         '''
         raise NotImplementedError
     
-class MetricBaseForReferenceWoSource(MetricBase, metaclass=abc.ABCMeta):
+class MetricBaseForSourceFree(MetricBase, metaclass=abc.ABCMeta):
     '''Metric without source sentence.
         This is basically for BERTScore or BARTScore 
             (that will be a component of PT-{ERRANT, M2}.).

@@ -1,7 +1,8 @@
 import gec_metrics
 from gec_metrics.metrics import (
     MetricBaseForReferenceBased,
-    MetricBaseForReferenceFree
+    MetricBaseForReferenceFree,
+    MetricBaseForSourceFree
 )
 import argparse
 import yaml
@@ -22,6 +23,7 @@ def main():
         metric_config = read_yaml(args.config)[args.metric]
     else:
         metric_config = {}
+    print(metric_config)
     scorer = metric_cls(metric_cls.Config(**metric_config))
     srcs = read_lines(args.src)
     for hyp in args.hyps:
@@ -35,6 +37,12 @@ def main():
         elif isinstance(scorer, MetricBaseForReferenceFree):
             score = scorer.score_corpus(
                 srcs, hyps
+            )
+        elif isinstance(scorer, MetricBaseForSourceFree):
+            assert args.refs is not None
+            refs = [read_lines(r) for r in args.refs]
+            score = scorer.score_corpus(
+                hyps, refs
             )
         print(f'Score={score} | Metric={args.metric} | hyp_file={hyp}')
 

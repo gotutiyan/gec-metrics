@@ -4,14 +4,14 @@ A library for evaluation of Grammatical Error Correction.
 # Install
 ```sh
 pip install git+https://github.com/gotutiyan/gec-metrics
-python -m spacy download en
+python -m spacy download en_core_web_sm
 ```
 Or,
 ```sh
 git clone git@github.com:gotutiyan/gec-metrics.git
 cd gec-metrics
 pip install -e ./
-python -m spacy download en
+python -m spacy download en_core_web_sm
 ```
 
 # Common Usage
@@ -21,22 +21,23 @@ python -m spacy download en
 ```python
 from gec_metrics import get_metric
 metric_cls = get_metric('gleu')
-scorer = metric_cls(metric_cls.Config())
+metric = metric_cls(metric_cls.Config())
 srcs = ['This sentences contain grammatical error .']
 hyps = ['This sentence contains an grammatical error .']
 refs = [
     ['This sentence contains an grammatical error .'],
     ['This sentence contains grammatical errors .']
-]
+] # (num_refs, num_sents)
+
 # Corpus-level score
 # If the metric is reference-free, the argument `references=` is not needed.
-corpus_score: float = scorer.score_corpus(
+corpus_score: float = metric.score_corpus(
     sources=srcs,
     hypotheses=hyps,
     references=refs
 )
 # Sentence-level scores
-sent_scores: list[float] = scorer.score_sentence(
+sent_scores: list[float] = metric.score_sentence(
     sources=srcs,
     hypotheses=hyps,
     references=refs
@@ -81,7 +82,7 @@ To be added.
 ```python
 from gec_metrics import get_metric
 metric_cls = get_metric('gleu')
-scorer = metric_cls(metric_cls.Config(
+metric = metric_cls(metric_cls.Config(
     iter=500,  # The number of iterations 
     n=4,  # max n-gram
     unit='word'  # 'word' or 'char'
@@ -92,7 +93,7 @@ The official one ignores ngram frequency differences when calculating the differ
 ```python
 from gec_metrics import get_metric
 metric_cls = get_metric('gleuofficial')
-scorer = metric_cls(metric_cls.Config(
+metric = metric_cls(metric_cls.Config(
     iter=500,  # The number of iterations 
     n=4,  # max n-gram
     unit='word'  # 'word' or 'char'
@@ -103,7 +104,7 @@ scorer = metric_cls(metric_cls.Config(
 ```python
 from gec_metrics import get_metric
 metric_cls = get_metric('errant')
-scorer = metric_cls(metric_cls.Config(
+metric = metric_cls(metric_cls.Config(
     beta=0.5,  # The beta for F-beta score
     language='en'  # Language for SpaCy.
 ))
@@ -114,7 +115,7 @@ scorer = metric_cls(metric_cls.Config(
 ```python
 from gec_metrics import get_metric
 metric_cls = get_metric('gotoscorer')
-scorer = metric_cls(metric_cls.Config(
+metric = metric_cls(metric_cls.Config(
     beta=0.5,  # The beta for F-beta score
     ref_id=0,  # The reference id
     no_weight=False,  # If True, all weights are 1.0
@@ -137,7 +138,20 @@ To be added.
 
 ### PT-ERRANT [[Gong+ 22]](https://aclanthology.org/2022.emnlp-main.463/)
 
-To be added.
+```python
+from gec_metrics import get_metric
+metric_cls = get_metric('pterrant')
+weight_model_id = 'bertscore'
+weight_model_cls = get_metric(weight_model_id)
+metric = metric_cls(metric_cls.Config(
+    beta=0.5,
+    weight_model_name=weight_model_id,
+    weight_model_config=weight_model_cls.Config(  # Optional: you can pass config
+        score_type='f',
+        rescale_with_baseline=True
+    )
+))
+```
 
 ### CLEME [[Ye+ 23]](https://aclanthology.org/2023.emnlp-main.378/)
 
@@ -147,19 +161,39 @@ To be added.
 ```python
 from gec_metrics import get_metric
 metric_cls = get_metric('green')
-scorer = metric_cls(metric_cls.Config(
+metric = metric_cls(metric_cls.Config(
     n=4,  # Max n of ngram
     beta=2.0,  # The beta for F-beta
     unit='word'  # 'word' or 'char'. Choose word-level or character-level
 ))
 ```
 
-## Reference-based (without sources)
+## Reference-based (but sources-free)
 
 These metrics are intended to be used for a component of PT-{M2, ERRANT}, but are also exposed to API.
 
 ### BERTScore [[Zhang+ 19]](https://arxiv.org/abs/1904.09675)
-To be added.
+
+The default config follows the default setting of [[Gong+ 22]](https://aclanthology.org/2022.emnlp-main.463/).
+
+```python
+from gec_metrics import get_metric
+metric_cls = get_metric('bertscore')
+metric = metric_cls(metric_cls.Config(
+    model_type='bert-base-uncased',
+    num_layers=None,
+    batch_size=64,
+    nthreads=4,
+    all_layers=False,
+    idf=False,
+    idf_sents=None,
+    lang='en',
+    rescale_with_baseline=True,
+    baseline_path=None,
+    use_fast_tokenizer=False,
+    score_type='f'
+))
+```
 
 ### BARTScore [[Yuan+ 21]](https://proceedings.neurips.cc/paper/2021/hash/e4d2b6e6fdeca3e60e0f1a62fee3d9dd-Abstract.html)
 
@@ -172,7 +206,7 @@ Download pre-trained models in advance from [here](https://github.com/kokeman/SO
 ```python
 from gec_metrics import get_metric
 metric_cls = get_metric('some')
-scorer = metric_cls(metric_cls.Config(
+metric = metric_cls(metric_cls.Config(
     model_g='gfm-models/grammer',
     model_f='gfm-models/fluency',
     model_m='gfm-models/meaning',
@@ -186,7 +220,7 @@ scorer = metric_cls(metric_cls.Config(
 ```python
 from gec_metrics import get_metric
 metric_cls = get_metric('scribendi')
-scorer = metric_cls(metric_cls.Config(
+metric = metric_cls(metric_cls.Config(
     model='gpt2',  # The model name or path to the language model to compute perplexity
     threshold=0.8  # The threshold for the maximum values of token-sort-ratio and levelshtein distance ratio
 ))
@@ -197,7 +231,7 @@ By default, it uses an unofficial pretrained QE model: [[gotutiyan/IMPARA-QE]](h
 ```python
 from gec_metrics import get_metric
 metric_cls = get_metric('impara')
-scorer = metric_cls(metric_cls.Config(
+metric = metric_cls(metric_cls.Config(
     model_qe='gotutiyan/IMPARA-QE',  # The model name or path for quality estimation.
     model_se='bert-base-cased',  # The model name or path for similarity estimation.
     threshold=0.9  # The threshold for the similarity score.

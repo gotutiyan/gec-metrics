@@ -1,5 +1,4 @@
 import gec_metrics
-import inspect
 
 def main():
     metric_ids = gec_metrics.get_metric_ids()
@@ -8,7 +7,7 @@ def main():
         print(f'{metric_id}:')
         config = cls.Config()
         for attr in config.__dict__:
-            print(f' {attr}: {config.__dict__[attr]}')
+            print(f" {attr}: {config.__dict__[attr] if config.__dict__[attr] is not None else 'null'}")
         print()
 
 if __name__ == '__main__':
