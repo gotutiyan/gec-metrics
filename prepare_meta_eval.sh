@@ -26,12 +26,6 @@ gecmetrics-gen-subset \
     --out $DIR/SEEDA/outputs/subset/REF$i.txt
 done
 
-gecmetrics-gen-subset \
-    --src_full $DIR/SEEDA/outputs/all/INPUT.txt \
-    --src_subset $DIR/SEEDA/outputs/subset/INPUT.txt \
-    --input $DIR/SEEDA/outputs/all/LM-Critic.txt \
-    --out $DIR/SEEDA/outputs/subset/LM-Critic.txt
-
 rm official_submissions.tar.gz
 rm conll14st-test-data.tar.gz
 rm -r conll14st-test-data
