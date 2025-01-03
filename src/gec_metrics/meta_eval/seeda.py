@@ -81,7 +81,7 @@ class MetaEvalSEEDA(MetaEvalBase):
             'base': ['INPUT', 'REF-F', 'GPT-3.5'],
             '+INPUT': ['REF-F', 'GPT-3.5'],
             '+REF-F_GPT-3.5': ['INPUT'],
-            '+flunecy': ['INPUT'],  # an alias
+            '+fluency': ['INPUT'],  # an alias
             'all': []
         }[self.config.system]
         models = [m for m in self.MODELS if m not in del_systems]
@@ -90,6 +90,7 @@ class MetaEvalSEEDA(MetaEvalBase):
             'references': [],
             'human_score': dict(),
             'models': models,
+            'del_models': del_systems,
             'sources': []
         }
         for model in models:
@@ -147,6 +148,7 @@ class MetaEvalSEEDA(MetaEvalBase):
             'base': ['INPUT', 'REF-F', 'GPT-3.5'],
             '+INPUT': ['REF-F', 'GPT-3.5'],
             '+REF-F_GPT-3.5': ['INPUT'],
+            '+fluency': ['INPUT'],  # an alias
             'all': []
         }[self.config.system]
         del_systems += ['REF0', 'REF1']
@@ -156,7 +158,7 @@ class MetaEvalSEEDA(MetaEvalBase):
             'human_score': dict(),
             'human_score_paths': dict(),
             'models': models,
-            'del_models': ['INPUT', 'REF-F', 'GPT-3.5'],
+            'del_models': del_systems,
             'sources': []
         }
         data['human_score']['edit'] = self.load_xml(

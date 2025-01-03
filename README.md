@@ -244,7 +244,9 @@ To perform meta evaluation easily, we provide meta-evaluation scripts.
 ### Preparation
 To donwload test data and human scores, you must download datasets by using the shell.
 ```sh
-bash prepare_meta_eval.sh
+gecmetrics-prepare-meta-eval
+# The above is the same as:
+# bash src/gec_metrics/meta_eval/prepare_meta_eval.sh
 ```
 
 This shell creates `meta_eval_data/` directory which consists of SEEDA dataset and CoNLL14 official submissions.
