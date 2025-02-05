@@ -92,13 +92,13 @@ class IMPARA(MetricBaseForReferenceFree):
         no_cuda: bool = False
         batch_size: int = 32
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config = None):
         super().__init__(config)
-        self.model_qe = AutoModelForSequenceClassification.from_pretrained(config.model_qe).eval()
-        self.tokenizer_qe = AutoTokenizer.from_pretrained(config.model_qe)
-        self.model_se = SimilarityEstimator(config.model_se).eval()
-        self.tokenizer_se = AutoTokenizer.from_pretrained(config.model_se)
-        if not config.no_cuda:
+        self.model_qe = AutoModelForSequenceClassification.from_pretrained(self.config.model_qe).eval()
+        self.tokenizer_qe = AutoTokenizer.from_pretrained(self.config.model_qe)
+        self.model_se = SimilarityEstimator(self.config.model_se).eval()
+        self.tokenizer_se = AutoTokenizer.from_pretrained(self.config.model_se)
+        if not self.config.no_cuda:
             self.model_qe.cuda()
             self.model_se.cuda()
     

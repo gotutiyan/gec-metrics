@@ -6,8 +6,8 @@ class MetricBase(abc.ABC):
     @dataclass
     class Config: ...
 
-    def __init__(self, config: Config):
-        self.config = config
+    def __init__(self, config: Config = None):
+        self.config = config if config is not None else self.Config()
 
     def apply_edits(
         self,

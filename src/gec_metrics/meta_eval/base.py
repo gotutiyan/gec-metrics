@@ -21,8 +21,8 @@ class MetaEvalBase(abc.ABC):
     @dataclass
     class Output: ...
 
-    def __init__(self, config: Config):
-        self.config = config
+    def __init__(self, config: Config = None):
+        self.config = config if config is not None else self.Config()
     
     @abc.abstractmethod
     def load_system_data(self) -> dict[str, list]:

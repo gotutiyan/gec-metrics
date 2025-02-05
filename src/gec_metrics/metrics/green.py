@@ -11,7 +11,7 @@ class GREEN(MetricBaseForReferenceBased):
         beta: float = 2.0
         unit: str = 'word'
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config = None):
         super().__init__(config)
         self.cache_ngram = dict()
     

@@ -11,7 +11,7 @@ class GoToScorer(ERRANT):
         beta: float = 0.5
         weight_file: str = ''
         ref_id: int = 0  # GoToScorer uses only one reference.
-        no_weight: bool = False
+        no_weight: bool = True
 
     @dataclass
     class Chunk:
@@ -22,9 +22,9 @@ class GoToScorer(ERRANT):
         weight: float = 1.0
         is_edited: bool = False
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config = None):
         super().__init__(config)
-        if not config.no_weight:
+        if not self.config.no_weight:
             data = json.load(open(
                 self.config.weight_file
             ))

@@ -35,7 +35,7 @@ class MetaEvalGJG(MetaEvalBase):
         '''
         corr: MetaEvalBase.Corr = None
 
-    def __init__(self, config: MetaEvalBase.Config):
+    def __init__(self, config: MetaEvalBase.Config = None):
         super().__init__(config)
         self.system_data = self.load_system_data()
         self.sentence_data = self.load_sentence_data()

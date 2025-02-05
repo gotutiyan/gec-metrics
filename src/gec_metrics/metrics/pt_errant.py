@@ -20,15 +20,15 @@ class PTERRANT(ERRANT):
         weight_model_name: str = 'bertscore'
         weight_model_config: MetricBaseForSourceFree.Config = None
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config = None):
         super().__init__(config)
         name2class = {
             'bertscore': BertScore
         }
-        if config.weight_model_name not in name2class:
-            raise KeyError(f'The model name {config.weight_model_name} is invalid. It should be in {list(name2class.keys())}.')
-        weight_model_cls = name2class[config.weight_model_name]
-        weight_model_config = config.weight_model_config
+        if self.config.weight_model_name not in name2class:
+            raise KeyError(f'The model name {self.config.weight_model_name} is invalid. It should be in {list(name2class.keys())}.')
+        weight_model_cls = name2class[self.config.weight_model_name]
+        weight_model_config = self.config.weight_model_config
         if weight_model_config is None:
             # Use default config
             weight_model_config = weight_model_cls.Config()

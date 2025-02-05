@@ -34,21 +34,21 @@ class BertScore(MetricBaseForSourceFree):
         use_fast_tokenizer: bool = False
         score_type: str = 'f'
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config = None):
         super().__init__(config)
-        assert config.score_type in ['p', 'r', 'f']
+        assert self.config.score_type in ['p', 'r', 'f']
         self.scorer = BERTScorer(
-            model_type=config.model_type,
-            num_layers=config.num_layers,
-            batch_size=config.batch_size,
-            nthreads=config.nthreads,
-            all_layers=config.all_layers,
-            idf=config.idf,
-            idf_sents=config.idf_sents,
-            lang=config.lang,
-            rescale_with_baseline=config.rescale_with_baseline,
-            baseline_path=config.baseline_path,
-            use_fast_tokenizer=config.use_fast_tokenizer
+            model_type=self.config.model_type,
+            num_layers=self.config.num_layers,
+            batch_size=self.config.batch_size,
+            nthreads=self.config.nthreads,
+            all_layers=self.config.all_layers,
+            idf=self.config.idf,
+            idf_sents=self.config.idf_sents,
+            lang=self.config.lang,
+            rescale_with_baseline=self.config.rescale_with_baseline,
+            baseline_path=self.config.baseline_path,
+            use_fast_tokenizer=self.config.use_fast_tokenizer
         )
         self.scorer._model.eval()
         if torch.cuda.is_available():

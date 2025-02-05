@@ -17,13 +17,13 @@ class SOME(MetricBaseForReferenceFree):
         batch_size: int = 32
         max_length: int = 128
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config = None):
         super().__init__(config)
-        self.model_f = AutoModelForSequenceClassification.from_pretrained(config.model_f).cuda()
-        self.model_g = AutoModelForSequenceClassification.from_pretrained(config.model_g).cuda()
-        self.model_m = AutoModelForSequenceClassification.from_pretrained(config.model_m).cuda()
-        self.tokenizer = AutoTokenizer.from_pretrained(config.model_f)
-        if not config.no_cuda:
+        self.model_f = AutoModelForSequenceClassification.from_pretrained(self.config.model_f).cuda()
+        self.model_g = AutoModelForSequenceClassification.from_pretrained(self.config.model_g).cuda()
+        self.model_m = AutoModelForSequenceClassification.from_pretrained(self.config.model_m).cuda()
+        self.tokenizer = AutoTokenizer.from_pretrained(self.config.model_f)
+        if not self.config.no_cuda:
             self.model_f.cuda()
             self.model_g.cuda()
             self.model_m.cuda()

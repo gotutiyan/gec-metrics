@@ -13,12 +13,12 @@ class Scribendi(MetricBaseForReferenceFree):
         no_cuda: bool = False
         batch_size: int = 32
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config = None):
         super().__init__(config)
-        self.model = AutoModelForCausalLM.from_pretrained(config.model).eval()
-        self.tokenizer = AutoTokenizer.from_pretrained(config.model)
+        self.model = AutoModelForCausalLM.from_pretrained(self.config.model).eval()
+        self.tokenizer = AutoTokenizer.from_pretrained(self.config.model)
         self.tokenizer.pad_token = self.tokenizer.eos_token
-        if not config.no_cuda:
+        if not self.config.no_cuda:
             self.model.cuda()
     
     def score_corpus(

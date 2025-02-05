@@ -10,9 +10,9 @@ class ERRANT(MetricBaseForReferenceBased):
         beta: float = 0.5
         language: str = 'en'
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config = None):
         super().__init__(config)
-        self.errant = errant.load(config.language)
+        self.errant = errant.load(self.config.language)
         self.cache_parse = dict()
         self.cache_annotate = dict()
 

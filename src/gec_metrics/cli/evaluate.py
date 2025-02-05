@@ -23,7 +23,6 @@ def main():
         metric_config = read_yaml(args.config)[args.metric]
     else:
         metric_config = {}
-    print(metric_config)
     scorer = metric_cls(metric_cls.Config(**metric_config))
     srcs = read_lines(args.src)
     for hyp in args.hyps:
