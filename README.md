@@ -3,21 +3,19 @@ A library for evaluation of Grammatical Error Correction.
 
 # Install
 ```sh
-pip install git+https://github.com/gotutiyan/gec-metrics
-python -m spacy download en_core_web_sm
+pip install gec-metrics
 ```
-Or,
+
+To install latest version,
 ```sh
-git clone git@github.com:gotutiyan/gec-metrics.git
-cd gec-metrics
-pip install -e ./
+pip install git+https://github.com/gotutiyan/gec-metrics
 python -m spacy download en_core_web_sm
 ```
 
 # Common Usage
 
 ### API
-`gec_metrics.get_metric()` supports `['errant', 'gleu', 'gleuofficial', 'green', 'gotoscorer', 'impara', 'some', 'scribendi']`.
+Valid IDs for `get_metric()` can be found with `get_metric_ids()`.
 ```python
 from gec_metrics import get_metric
 metric_cls = get_metric('gleu')
@@ -46,8 +44,7 @@ sent_scores: list[float] = metric.score_sentence(
 
 ### CLI
 - As the corresponding configurations differ depending on the metric, they are described and entered in yaml. If no yaml is provided, the default configuration is used.  
-- `--metric` supports `['errant', 'gleu', 'gleuofficial', 'green', 'gotoscorer', 'impara', 'some', 'scribendi']`.
-- You can input multiple hypotheses, 
+- You can input multiple hypotheses.
 ```sh
 gecmetrics-eval \
     --src <sources file> \
@@ -73,9 +70,6 @@ gec-metrics supports the following metrics.
 All of arguments in the following examples indicate default values.
 
 ## Reference-based
-### M2 
-
-To be added.
 
 ###  GLEU+ [[Napoles+ 15]](https://aclanthology.org/P15-2097/) [[Napoles+ 16]](https://arxiv.org/abs/1605.02592)  
 
@@ -132,10 +126,6 @@ gecmetrics-gen-gotoscorer-weight \
     --out weight.json
 ```
 
-### PT-M2 [[Gong+ 22]](https://aclanthology.org/2022.emnlp-main.463/)
-
-To be added.
-
 ### PT-ERRANT [[Gong+ 22]](https://aclanthology.org/2022.emnlp-main.463/)
 
 ```python
@@ -152,10 +142,6 @@ metric = metric_cls(metric_cls.Config(
     )
 ))
 ```
-
-### CLEME [[Ye+ 23]](https://aclanthology.org/2023.emnlp-main.378/)
-
-To be added.
 
 ### GREEN [[Koyama+ 24]](https://aclanthology.org/2024.inlg-main.25/)
 ```python
@@ -194,10 +180,6 @@ metric = metric_cls(metric_cls.Config(
     score_type='f'
 ))
 ```
-
-### BARTScore [[Yuan+ 21]](https://proceedings.neurips.cc/paper/2021/hash/e4d2b6e6fdeca3e60e0f1a62fee3d9dd-Abstract.html)
-
-To be added.
 
 ## Reference-free
 
@@ -238,6 +220,29 @@ metric = metric_cls(metric_cls.Config(
 ))
 ```
 
+### LLM-S, LLM-E [[Kobayashi+24]](https://aclanthology.org/2024.bea-1.6/)
+- `llmkobayashi24` is a common prefix.
+- `llmkobayashi24hfsent` and `llmkobayashi24hfedit` is a huggingface model based LLM-S and LLM-E.
+- `llmkobayashi24openaisent` and `llmkobayashi24openaiedit` is a OpenAI model based LLM-S and LLM-E.
+```python
+from gec_metrics import get_metric
+metric_cls = get_metric('llmkobayashi24hfsent')
+metric = metric_cls(metric_cls.Config(
+    model='meta-llama/Llama-2-13b-chat-hf',  # The model name or path for a language model.
+))
+```
+
+```python
+from gec_metrics import get_metric
+metric_cls = get_metric('llmkobayashi24openaisent')
+metric = metric_cls(metric_cls.Config(
+    model='gpt-4o-mini-2024-07-18'
+    organization='<Organization key>'
+    api_key='<API key>'
+    base_url=None,  # use it when using Gemini
+))
+```
+
 # Meta Evaluation
 To perform meta evaluation easily, we provide meta-evaluation scripts.
 
@@ -272,10 +277,10 @@ meta_eval_data/
     │   │   ├── ...├── ...
 ```
 
-### SEEDA: [[Kobayashi+ 24]](https://direct.mit.edu/tacl/article/doi/10.1162/tacl_a_00676/123651/Revisiting-Meta-evaluation-for-Grammatical-Error)
-The examples below uses ERRANT as a metric, but can also use other metrics based on `gec_metrics.metrics.MetricBase`.  
-- `ew_*` means using ExpectedWins human evaluation scores and `ts_*` means using TrueSkill.
-- `*_edit` and `*_sent` means SEEDA-E and SEEDA-S.
+### Common Usage
+`gec_metrics.get_meta_eval()` supports `['gjg', 'seeda']`.
+- `.corr_system()` performs system-level meta-evaluation.
+- `.corr_sentence()` performs sentence-level meta-evaluation.
 
 ```python
 from gec_metrics import get_meta_eval
@@ -283,11 +288,11 @@ from gec_metrics import get_metric
 metric_cls = get_metric('gleu')
 metric = metric_cls(metric_cls.Config())
 meta_cls = get_meta_eval('seeda')
-meta_seeda = meta_cls(
+meta = meta_cls(
     meta_cls.Config(system='base')
 )
 # System correlation
-results = meta_seeda.corr_system(metric)
+results = meta.corr_system(metric)
 # Output:
 # SEEDASystemCorrOutput(ew_edit=Corr(pearson=0.9007842791853424,
 #                                    spearman=0.9300699300699302,
@@ -307,7 +312,7 @@ results = meta_seeda.corr_system(metric)
 #                                    kendall=None))
 
 # Sentence correlation
-results = meta_seeda.corr_sentence(metric)
+results = meta.corr_sentence(metric)
 # Output:
 # SEEDASentenceCorrOutput(sent=Corr(pearson=None,
 #                                   spearman=None,
@@ -319,28 +324,39 @@ results = meta_seeda.corr_sentence(metric)
 #                                   kendall=0.3469122989102231))
 ```
 
-The window analysis can be done by `window_analysis_system()`.  
-- `ew_*` uses Expected Wins human evaluation scores and `ts_*` uses TrueSkill.
-- `*_edit` and `*_sent` means SEEDA-E and SEEDA-S.
-- Each is a dictionary: `{(start_rank, end_rank): MetaEvalSEEDA.Corr}`.
-```py
+### SEEDA: [[Kobayashi+ 24]](https://direct.mit.edu/tacl/article/doi/10.1162/tacl_a_00676/123651/Revisiting-Meta-evaluation-for-Grammatical-Error)
+```python
 from gec_metrics import get_meta_eval
-from gec_metrics import get_metric
-metric_cls = get_metric('gleu')
-metric = metric_cls(metric_cls.Config())
 meta_cls = get_meta_eval('seeda')
-meta_seeda = meta_cls(
+meta = meta_cls(
     meta_cls.Config(system='base')
 )
-results = meta_seeda.window_analysis_system(metric, window=4)
-assert results.ew_edit is not None
-assert results.ew_sent is not None
-assert results.ts_edit is not None
-assert results.ts_sent is not None
-
-for k, v in results.ts_sent.items():
-    print(f'From {k[0]} to {k[1]}: {v.pearson=}, {v.spearman=}')
 ```
+The `.corr_system()` returns a `gec_metrics.meta_eval.meta_eval.SEEDASystemCorrOutput.` instance. This is a dataclass containig `ew_sent`, `ew_edit`, `ts_sent`, `ts_edit`.
+- `ew_*` means using ExpectedWins human evaluation scores and `ts_*` means using TrueSkill.
+- `*_edit` and `*_sent` means SEEDA-E and SEEDA-S.
+
+The `.corr_sentence()` returns a `gec_metrics.meta_eval.meta_eval.SEEDASentenceCorrOutput.` instance. This is a dataclass containig `sent`, `edit`.
+- `edit` and `sent` means SEEDA-E and SEEDA-S.
+
+The `window_analysis_system()` performs the window analysis.
+- This returns `SEEDAWindowAnalysisSystemCorrOutput` instance contaiing the same attributes as `.corr_system()`. Each attribute has `dict[tuple, MetaEvalSEEDA.Corr]` and the tuple means start and end rank of human evaluation.
+-  `window_analysis_plot()` can be used for visualization. 
+    ```python
+    # An exmaple of window-analysis visualization.
+    from gec_metrics.metrics import ERRANT
+    from gec_metrics.meta_eval import MetaEvalSEEDA
+    import matplotlib.pyplot as plt
+    metric = ERRANT(ERRANT.Config(beta=0.5))
+    meta = MetaEvalSEEDA(
+    MetaEvalSEEDA.Config(system='base')
+    )
+    window_results = meta.window_analysis_system(metric)
+    fig = meta.window_analysis_plot(window_results.ts_edit)
+    plt.savefig('window-errant.png')
+    ```
+
+
 
 ### GJG15: [[Grundkiewicz+ 15]](https://aclanthology.org/D15-1052/)
 
@@ -349,27 +365,6 @@ Basically, TrueSkill ranking is used to compute the correlation.
 
 ```python
 from gec_metrics import get_meta_eval
-from gec_metrics import get_metric
-metric_cls = get_metric('gleu')
-metric = metric_cls(metric_cls.Config())
 meta_cls = get_meta_eval('gjg')
-meta_gjg = meta_cls(meta_cls.Config())
-# System correlation
-results = meta_gjg.corr_system(metric)
-# Output:
-# GJGSystemCorrOutput(ew=Corr(pearson=0.601290729078602,
-#                             spearman=0.5934065934065934,
-#                             accuracy=None,
-#                             kendall=None),
-#                     ts=Corr(pearson=0.6633835644883472,
-#                             spearman=0.6868131868131868,
-#                             accuracy=None,
-#                             kendall=None))
-
-results = meta_gjg.corr_sentence(metric)
-# Output:
-# GJGSentenceCorrOutput(corr=Corr(pearson=None,
-#                                 spearman=None,
-#                                 accuracy=0.6729157079690282,
-#                                 kendall=0.34583141593805644))
+meta = meta_cls()
 ```
