@@ -10,15 +10,15 @@ import time
 from .green import GREEN
 
 class GLEU(GREEN):
-    '''GLEU using GREEN reformulation (https://aclanthology.org/2024.inlg-main.25.pdf).
+    '''GLEU implemented using GREEN reformulation (https://aclanthology.org/2024.inlg-main.25.pdf).
     '''
     @dataclass
     class Config(MetricBaseForReferenceBased.Config):
-        '''
+        '''GLEU configuration.
         Args:
-            iter (int): The number of iterations.
-            n (int): The maximum n of ngram.
-            unit (str): Word-level or character-level. Can be 'word' or 'char'.
+            - iter (int): The number of iterations.
+            - n (int): The maximum n of n-gram.
+            - unit (str): Word-level or character-level. Can be 'word' or 'char'.
         '''
         iter: int = 500
         n: int = 4
@@ -56,16 +56,18 @@ class GLEU(GREEN):
         hypotheses: list[str],
         references: list[list[str]]
     ) -> float:
-        '''Calculate sentence level scores by aggregating verbose scores.
+        '''Calculate a corpus-level score.
 
         Args:
             sources (list[str]): Source sentence.
-            hypothesis (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
+            hypotheses (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
             references (list[list[str]]): Reference sentences.
-                The shape is (the number of references, the number of sentences).
+                The shape is (num_references, num_sentences).
         
         Returns:
-            float: The corpus-level scores.
+            float: The corpus-level score.
         '''
         verbose_scores, hyp_lens, ref_lens = self.score_base(
             sources,
@@ -98,13 +100,15 @@ class GLEU(GREEN):
         hypotheses: list[str],
         references: list[list[str]]
     ) -> float:
-        '''Calculate sentence level scores by aggregating verbose scores.
+        '''Calculate sentence-level scores.
 
         Args:
             sources (list[str]): Source sentence.
-            hypothesis (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
+            hypotheses (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
             references (list[list[str]]): Reference sentences.
-                The shape is (the number of references, the number of sentences).
+                The shape is (num_references, num_sentences).
         
         Returns:
             list[float]: The sentence-level scores.

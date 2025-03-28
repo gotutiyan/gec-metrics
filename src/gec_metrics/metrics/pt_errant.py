@@ -15,7 +15,7 @@ class PTERRANT(ERRANT):
             The config instance of the weight model.
             If not specified, it uses the default one.
 
-        Also, you can use the configurations of ERRANT.
+        Also, you can use the same configurations as ERRANT.
         '''
         weight_model_name: str = 'bertscore'
         weight_model_config: MetricBaseForSourceFree.Config = None

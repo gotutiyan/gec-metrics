@@ -59,6 +59,17 @@ class BertScore(MetricBaseForSourceFree):
         hypotheses: list[str],
         references: list[list[str]]
     ) -> list[float]:
+        '''Calculate sentence-level scores.
+
+        Args:
+            hypotheses (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
+            references (list[list[str]]): Reference sentences.
+                The shape is (num_references, num_sentences).
+        
+        Returns:
+            list[float]: The sentence-level scores.
+        '''
         # (num_refs, num_sents) -> (num_sents, num_refs)
         references = list(zip(*references))
         output = self.scorer.score(

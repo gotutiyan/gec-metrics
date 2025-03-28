@@ -2,7 +2,8 @@ from .base import (
     MetricBase,
     MetricBaseForReferenceBased,
     MetricBaseForReferenceFree,
-    MetricBaseForSourceFree
+    MetricBaseForSourceFree,
+    inputs_handler
 )
 from .scribendi import Scribendi
 from .impara import IMPARA

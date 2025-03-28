@@ -85,6 +85,14 @@ class SimilarityEstimator(nn.Module):
 class IMPARA(MetricBaseForReferenceFree):
     @dataclass
     class Config(MetricBase.Config):
+        '''IMPARA configuration.
+            - model_qe (str): Quality estimation model.
+            - model_se (str): Similarity estimation model.
+            - max_length (int): Maximum length of inputs.
+            - threshold (float): Threshold for the similarity score.
+            - no_cuda (bool): If True, work on CPU.
+            - batch_size (int): Batch size for the inference.
+        '''
         model_qe: str = 'gotutiyan/IMPARA-QE'
         model_se: str = 'bert-base-cased'
         max_length: int = 128
@@ -111,7 +119,9 @@ class IMPARA(MetricBaseForReferenceFree):
 
         Args:
             sources (list[str]): Source sentence.
+                The shape is (num_sentences, )
             hypotheses (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
         
         Returns:
             list[float]: The sentence-level scores.

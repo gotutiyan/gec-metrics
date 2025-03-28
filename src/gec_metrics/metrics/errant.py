@@ -7,6 +7,10 @@ import spacy
 class ERRANT(MetricBaseForReferenceBased):
     @dataclass
     class Config(MetricBaseForReferenceBased.Config):
+        '''ERRANT configuration.
+            - beta (float): The beta for F-beta score.
+            - language (str): The language for spacy.
+        '''
         beta: float = 0.5
         language: str = 'en'
 
@@ -32,7 +36,7 @@ class ERRANT(MetricBaseForReferenceBased):
     def edit_extraction(
         self, src: str, trg: str
     ) -> list[errant.edit.Edit]:
-        '''Extract edits given a source and a corrected.
+        '''Extract edits given a source and a corrected sentence.
 
         Args:
             src (str): The source sentence.
@@ -76,16 +80,20 @@ class ERRANT(MetricBaseForReferenceBased):
         hypotheses: list[str],
         references: list[list[str]]
     ) -> float:
-        '''Calculate a corpus level score by aggregating verbose scores.
+        '''Calculate a corpus-level score.
+        This accumulates edit count for TP, FP, FN
+            and calculates f-beta score.
 
         Args:
             sources (list[str]): Source sentence.
-            hypothesis (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
+            hypotheses (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
             references (list[list[str]]): Reference sentences.
-                The shape is (the number of references, the number of sentences).
+                The shape is (num_references, num_sentences).
         
         Returns:
-            float: The corpus-level F-beta score.
+            float: The corpus-level score.
         '''
         verbose_scores = self.score_corpus_verbose(
             sources, hypotheses, references
@@ -133,16 +141,18 @@ class ERRANT(MetricBaseForReferenceBased):
         hypotheses: list[str],
         references: list[list[str]]
     ) -> list[float]:
-        '''Calculate sentence level scores by aggregating verbose scores.
+        '''Calculate sentence-level scores.
 
         Args:
             sources (list[str]): Source sentence.
-            hypothesis (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
+            hypotheses (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
             references (list[list[str]]): Reference sentences.
-                The shape is (the number of references, the number of sentences).
+                The shape is (num_references, num_sentences).
         
         Returns:
-            list[float]: The sentence-level F-beta scores.
+            list[float]: The sentence-level scores.
         '''
         verbose_scores = self.score_sentence_verbose(
             sources, hypotheses, references
@@ -156,15 +166,18 @@ class ERRANT(MetricBaseForReferenceBased):
         references: list[list[str]]
     ) -> list["Score"]:
         '''Calculate sentence level scores by aggregating verbose scores.
+        "verbose" means that TP, FP, FN, Precisoin, Recall, and F are available.
 
         Args:
             sources (list[str]): Source sentence.
-            hypothesis (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
+            hypotheses (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
             references (list[list[str]]): Reference sentences.
-                The shape is (the number of references, the number of sentences).
+                The shape is (num_references, num_sentences).
         
         Returns:
-            list[Score]: It contains TP, FP, FN, Precision, Recall, and F-beta.
+            list[Score]: The sentence-level scores.
         '''
         verbose_scores = self.score_base(
             sources,
@@ -174,7 +187,7 @@ class ERRANT(MetricBaseForReferenceBased):
         scores = []
         for sent_id, v_scores in enumerate(verbose_scores):  # sentence loop
             best_score = None
-            for v_score_for_ref in v_scores:  # reference loop
+            for v_score_for_ref in v_scores:  # reference loop to choose the best reference.
                 agg_score = self.aggregate_to_overall(v_score_for_ref)
                 if best_score is None or best_score < agg_score:
                     best_score = agg_score

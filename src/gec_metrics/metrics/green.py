@@ -7,6 +7,11 @@ import hashlib
 class GREEN(MetricBaseForReferenceBased):
     @dataclass
     class Config(MetricBaseForReferenceBased.Config):
+        '''GREEN configuration
+            - n (int): Maxmimun n for n-gram.
+            - beta (int): The beta for F-beta score.
+            - unit (str): Word-level or character-level. Can be 'word' or 'char'.
+        '''
         n: int = 4
         beta: float = 2.0
         unit: str = 'word'
@@ -19,7 +24,7 @@ class GREEN(MetricBaseForReferenceBased):
         self,
         sentence: str,
     ) -> dict[str, int]:
-        '''Get frequency of n-gram for all n (min_n <= n <= max_n)
+        '''Get frequency of n-gram for all n (1 <= n <= config.n)
         '''
         if sentence == '':
             return dict()
@@ -67,16 +72,20 @@ class GREEN(MetricBaseForReferenceBased):
         hypotheses: list[str],
         references: list[list[str]]
     ) -> float:
-        '''Calculate sentence level scores by aggregating verbose scores.
+        '''Calculate a corpus-level score.
+        This accumulates n-gram count for TP, FP, FN
+            and calculates f-beta score.
 
         Args:
             sources (list[str]): Source sentence.
-            hypothesis (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
+            hypotheses (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
             references (list[list[str]]): Reference sentences.
-                The shape is (the number of references, the number of sentences).
+                The shape is (num_references, num_sentences).
         
         Returns:
-            float: The corpus-level scores.
+            float: The corpus-level score.
         '''
         verbose_scores = self.score_base(
             sources,
@@ -102,13 +111,15 @@ class GREEN(MetricBaseForReferenceBased):
         hypotheses: list[str],
         references: list[list[str]]
     ) -> list[float]:
-        '''Calculate sentence level scores by aggregating verbose scores.
+        '''Calculate sentence-level scores.
 
         Args:
             sources (list[str]): Source sentence.
-            hypothesis (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
+            hypotheses (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
             references (list[list[str]]): Reference sentences.
-                The shape is (the number of references, the number of sentences).
+                The shape is (num_references, num_sentences).
         
         Returns:
             list[float]: The sentence-level scores.
