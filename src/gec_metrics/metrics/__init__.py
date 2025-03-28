@@ -14,6 +14,12 @@ from .green import GREEN
 from .gotoscorer import GoToScorer
 from .bertscore import BertScore
 from .pt_errant import PTERRANT
+from .llm_kobayashi24 import (
+    LLMKobayashi24HFEdit,
+    LLMKobayashi24HFSent,
+    LLMKobayashi24OpenAIEdit,
+    LLMKobayashi24OpenAISent
+)
 
 METRIC_BASE_CLS = [
     MetricBase,
@@ -31,7 +37,11 @@ METRIC_CLS = [
     GREEN,
     GoToScorer,
     BertScore,
-    PTERRANT
+    PTERRANT,
+    LLMKobayashi24HFEdit,
+    LLMKobayashi24HFSent,
+    LLMKobayashi24OpenAIEdit,
+    LLMKobayashi24OpenAISent
 ]
 
 __all__ = [c.__name__ for c in METRIC_BASE_CLS + METRIC_CLS]
