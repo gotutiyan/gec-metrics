@@ -8,6 +8,13 @@ import abc
 class Scribendi(MetricBaseForReferenceFree):
     @dataclass
     class Config(MetricBase.Config):
+        '''Scribendi configuration.
+            - model (str): Model id of a language model.
+            - threshold (float): Threshold for the maximum values of 
+                the token sort ratio and the levenshtein distance ratio.
+            - no_cuda (bool): If True, work on CPU.
+            - batch_size (int): Batch size for the inference.
+        '''
         model: str = 'gpt2'
         threshold: float = 0.8
         no_cuda: bool = False
@@ -26,15 +33,16 @@ class Scribendi(MetricBaseForReferenceFree):
         sources: list[str],
         hypotheses: list[str]
     ) -> float:
-        '''The corpus-level score is defined as a sum of
-            sentence-level scores.
+        '''Calculate a corpus-level score.
 
         Args:
             sources (list[str]): Source sentence.
-            hypothesis (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
+            hypotheses (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
         
         Returns:
-            float: The corpus-level scores.
+            float: The corpus-level score.
         '''
         sentence_scores = self.score_sentence(
             sources,
@@ -51,7 +59,9 @@ class Scribendi(MetricBaseForReferenceFree):
 
         Args:
             sources (list[str]): Source sentence.
-            hypothesis (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
+            hypotheses (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
         
         Returns:
             list[float]: The sentence-level scores.

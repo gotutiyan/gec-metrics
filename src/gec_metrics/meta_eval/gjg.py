@@ -10,6 +10,7 @@ from .utils import read_lines
 
 class MetaEvalGJG(MetaEvalBase):
     MODELS = ['AMU', 'RAC', 'CAMB', 'CUUI', 'POST', 'UFC', 'PKU', 'UMC', 'IITB', 'SJTU', 'INPUT', 'NTHU', 'IPN']
+    SCORE_ID = ['ew', 'ts']
     @dataclass
     class GJGSystemCorrOutput(MetaEvalBase.Output):
         '''The dataclass to store the meta-evaluation results.
@@ -35,13 +36,37 @@ class MetaEvalGJG(MetaEvalBase):
         '''
         corr: MetaEvalBase.Corr = None
 
+    @dataclass
+    class GJGWindowAnalysisSystemCorrOutput(MetaEvalBase.Output):
+        '''The dataclass to store the meta-evaluation results.
+        
+        Args:
+            ts (MetaEvalBase.Corr):
+                The correlation using TrueSkill-based human evaluation.
+            ts (MetaEvalBase.Corr):
+                The correlation using Expected Wins-based human evaluation.
+        '''
+        ew: dict = None
+        ts: dict = None
+
     def __init__(self, config: MetaEvalBase.Config = None):
         super().__init__(config)
         self.system_data = self.load_system_data()
         self.sentence_data = self.load_sentence_data()
 
     def load_system_data(self) -> dict[str, list]:
-        '''Loads evaluation data and human scores.'''
+        '''Load system-level meta-evaluation data.
+        
+        Returns:
+            dict[str, list]: The meta-evaluation data contianing the following keys:
+                - "sources": Source sentences. The shape is (num_sentences, ).
+                - "hypotheses": Hypotheses sentences. The shape is (num_systems, num_sentences).
+                - "references": Reference sentences. The shape is (num_references, num_sentences).
+                - "models": The model names. This index corresponds to the first dimension of "hypotheses".
+                - "human_scores": Human scores for the systems. The shape is (num_systems, )
+                    - "ew" is human Expected Wins scores.
+                    - "ts" is human TrueSkill scores.
+        '''
         # Expected Wins scores
         # Table 3 (b) https://aclanthology.org/D15-1052.pdf
         ew_table = '''0.628 1 AMU
@@ -101,7 +126,20 @@ class MetaEvalGJG(MetaEvalBase):
         data['references'] = [ref0, ref1]
         return data
     
-    def load_xml(self, xml_path: str, target_models: list[str]):
+    def load_xml(self, xml_path: str, target_models: list[str]) -> dict[int, list[list[int]]]:
+        '''Load a XML file.
+        
+        Args:
+            xml_path (str): Path to a XML file.
+            target_models (list[str]): Model names to be evaluated.
+
+        Returns:
+            dict[int, list[list[int]]:
+                Dictionary containing sentence-level human evaluation rankings.
+                The data is stored for each source and annotator.
+                You can refer to the ranking by dict[src_id][annotator_id][system_id] = -rank.
+                Note that each element is *minus* rank, so higher values are higher quality. 
+        '''
         tree = ET.parse(xml_path)
         root = tree.getroot()
         human_scores = dict()
@@ -124,19 +162,33 @@ class MetaEvalGJG(MetaEvalBase):
         return human_scores
     
     def load_sentence_data(self) -> dict[str, list]:
-        '''TODO: Implement it.'''
+        '''Loads sentence-level meta-evaluation data.
+        
+        Returns:
+            dict[str, list]: The meta-evaluation data contianing the following keys:
+                - "sources": Source sentences. The shape is (num_sentences, ).
+                - "hypotheses": Hypotheses sentences. The shape is (num_systems, num_sentences).
+                - "references": Reference sentences. The shape is (num_references, num_sentences).
+                - "models": The model names. This index corresponds to the first dimension of "hypotheses".
+                - "human_scores": Human scores for the systems.
+                    - "ew" is human Expected Wins scores.
+                        The shape is (num_sentences, num_systems, num_systems).
+                    - "ts" is human TrueSkill scores.
+                        The shape is (num_sentences, num_systems, num_systems).
+        '''
         data_dir = glob.glob('**/meta_eval_data/conll14/', recursive=True)[0]
         score_dir = glob.glob('**/meta_eval_data/GJG15/', recursive=True)[0]
         data = {
             'hypotheses': [],
             'references': [],
-            'human_score': [],
+            'human_score': dict(),
             'models': self.MODELS,
             'sources': []
         }
-        data['human_score'] = self.load_xml(os.path.join(score_dir, 'judgments.xml'), self.MODELS)
-        src_ids = [h[0] for h in data['human_score']]
-        data['human_score'] = [h[1] for h in data['human_score']]
+        # The ['data'] key is a dummy label to adapt the interface to SEEDA.
+        data['human_score']['sent'] = self.load_xml(os.path.join(score_dir, 'judgments.xml'), self.MODELS)
+        src_ids = [h[0] for h in data['human_score']['sent']]
+        data['human_score']['sent'] = [h[1] for h in data['human_score']['sent']]
         sentences = []
         for model in self.MODELS:
             sents = read_lines(os.path.join(data_dir, 'official_submissions', model))
@@ -150,38 +202,27 @@ class MetaEvalGJG(MetaEvalBase):
             [ref0[i] for i in src_ids],
             [ref1[i] for i in src_ids],
         ]
-
         return data
     
-    def corr_system(self, metric: MetricBase) -> "GJGSystemCorrOutput":
+    def corr_system(
+        self,
+        metric: MetricBase,
+        aggregation='default'
+    ) -> "GJGSystemCorrOutput":
         '''Compute system-level correlations.
 
         Args:
             metric (MetricBase): The metric to be evaluated.
 
         Returns:
-            GJGOutput: The correlations.
+            GJGSystemCorrOutput: The correlations.
         '''
-        data = self.system_data
-        metric_scores = [
-            self.calc_system_score(
-                metric=metric,
-                sources=data['sources'],
-                hypotheses=hyps,
-                references=data['references']
-            ) for hyps in data['hypotheses']
-        ]
-        corrs = [
-            self.Corr(
-                pearson=float(pearsonr(metric_scores, data['human_score'][name])[0]),
-                spearman=float(spearmanr(metric_scores, data['human_score'][name])[0])
-            ) for name in ['ew', 'ts']
-        ]
+        corrs = super().corr_system(metric, aggregation=aggregation)
         return self.GJGSystemCorrOutput(
             ew=corrs[0],
             ts=corrs[1]
         )
-        
+    
     def corr_sentence(self, metric: MetricBase) -> "GJGSentenceCorrOutput":
         '''Compute sentence-level correlations.
 
@@ -189,42 +230,21 @@ class MetaEvalGJG(MetaEvalBase):
             metric (MetricBase): The metric to be evaluated.
 
         Returns:
-            SEEDASentenceCorrOutput: The correlations.
+            GJGSentenceCorrOutput: The correlations.
         '''
-        data = self.sentence_data
-        metric_scores = [
-            self.calc_sentence_score(
-                metric=metric,
-                sources=data['sources'],
-                hypotheses=hyps,
-                references=data['references']
-            ) for hyps in data['hypotheses']
-        ]
-        num_sents = len(data['sources'])
-        num_sys = len(data['models'])
-        human_scores = data['human_score']
-        agree = 0
-        not_agree = 0
-        denominator = 0
-        for src_id in range(num_sents):
-            for annotate_id in range(len(human_scores[src_id])):
-                for sys1, sys2 in itertools.combinations(range(num_sys), 2):
-                    m1 = metric_scores[sys1][src_id]
-                    m2 = metric_scores[sys2][src_id]
-                    h1 = human_scores[src_id][annotate_id][sys1]
-                    h2 = human_scores[src_id][annotate_id][sys2]
-                    if None in [h1, h2]:
-                        continue
-                    if h1 == h2:
-                        continue
-                    denominator += 1
-                    if (m1 <= m2) == (h1 <= h2):
-                        agree += 1
-                    else:
-                        not_agree += 1
-        corr = self.Corr()
-        corr.accuracy = agree / denominator
-        corr.kendall = (agree - not_agree) / denominator
+        corrs = super().corr_sentence(metric)
         return self.GJGSentenceCorrOutput(
-            corr=corr
+            corr=corrs[0]
+        )
+    
+    def window_analysis_system(
+        self,
+        metric: MetricBase,
+        window: int = 4,
+        aggregation='default'
+    ) -> "GJGWindowAnalysisSystemCorrOutput":
+        corrs = super().window_analysis_system(metric, window, aggregation)
+        return self.GJGWindowAnalysisSystemCorrOutput(
+            ew=corrs[0],
+            ts=corrs[1],
         )

@@ -7,6 +7,17 @@ import math
 class SOME(MetricBaseForReferenceFree):
     @dataclass
     class Config(MetricBase.Config):
+        '''SOME configuration.
+            - model_g (str): Model for grammaticality.
+            - model_f (str): Model for fluency.
+            - model_m (str): Model for meaning preservation.
+            - weight_g (float): Weight for the grammaticality score.
+            - weight_f (float): Weight for the fluency score.
+            - weight_m (float): Weight for the meaning preservation score.
+            - no_cuda (bool): If True, work on CPU.
+            - batch_size (int): Batch size for inference.
+            - max_length (int): Maximum length of inputs.
+        '''
         model_g: str = 'gfm-models/grammer'
         model_f: str = 'gfm-models/fluency'
         model_m: str = 'gfm-models/meaning'
@@ -28,7 +39,12 @@ class SOME(MetricBaseForReferenceFree):
             self.model_g.cuda()
             self.model_m.cuda()
     
-    def min_max_normalize(self, x, x_min=1, x_max=4):
+    def min_max_normalize(self, x: int, x_min: int=1, x_max:int=4):
+        '''Normalizes the input values in the range x_min to x_max.
+            - x (int): Input value.
+            - x_min (int): Lower bound of the range.
+            - x_max (int): Upper bound of the range.
+        '''
         return (x - x_min) / (x_max - x_min)
     
     def score_sentence(
@@ -40,7 +56,9 @@ class SOME(MetricBaseForReferenceFree):
 
         Args:
             sources (list[str]): Source sentence.
-            hypothesis (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
+            hypotheses (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
         
         Returns:
             list[float]: The sentence-level scores.
