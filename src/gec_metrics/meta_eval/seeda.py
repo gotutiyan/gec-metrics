@@ -5,13 +5,29 @@ from scipy.stats import pearsonr, spearmanr
 from dataclasses import dataclass
 import itertools
 from .base import MetaEvalBase
-from gec_metrics.metrics import MetricBase
+from gec_metrics.metrics import MetricBase, inputs_handler
 import xml.etree.ElementTree as ET
 import numpy as np
 from .utils import read_lines
 
 class MetaEvalSEEDA(MetaEvalBase):
-    MODELS = ['BART', 'BERT-fuse', 'GECToR-BERT', 'GECToR-ens', 'GPT-3.5', 'INPUT', 'LM-Critic', 'PIE', 'REF-F', 'REF-M', 'Riken-Tohoku', 'T5', 'TemplateGEC', 'TransGEC', 'UEDIN-MS']
+    MODELS = [
+        'BART',
+        'BERT-fuse',
+        'GECToR-BERT',
+        'GECToR-ens',
+        'GPT-3.5',
+        'INPUT',
+        'LM-Critic',
+        'PIE',
+        'REF-F',
+        'REF-M',
+        'Riken-Tohoku',
+        'T5',
+        'TemplateGEC',
+        'TransGEC',
+        'UEDIN-MS'
+    ]
     SCORE_ID = ['EW_edit', 'EW_sent', 'TS_edit', 'TS_sent']
     @dataclass
     class SEEDASystemCorrOutput(MetaEvalBase.Output):
@@ -74,7 +90,19 @@ class MetaEvalSEEDA(MetaEvalBase):
         self.sentence_data = self.load_sentence_data()
 
     def load_system_data(self) -> dict[str, list]:
-        '''Load evaluation data and human scores for system-level meta-evalaution.
+        '''Load system-level meta-evaluation data.
+        
+        Returns:
+            dict[str, list]: The meta-evaluation data contianing the following keys:
+                - "sources": Source sentences. The shape is (num_sentences, ).
+                - "hypotheses": Hypotheses sentences. The shape is (num_systems, num_sentences).
+                - "references": Reference sentences. The shape is (num_references, num_sentences).
+                - "models": The model names. This index corresponds to the first dimension of "hypotheses".
+                - "human_scores": Dictionary of Human scores. The shape is (num_systems, ).
+                    - "EW_edit": Expected Wins scores using edit-based human evaluation.
+                    - "EW_sent": Expected Wins scores using sentence-based human evaluation.
+                    - "TS_edit": TrueSkill scores using edit-based human evaluation.
+                    - "TS_sent": TrueSkill scores using sentence-based human evaluation.
         '''
         subset_dir = glob.glob('**/SEEDA/outputs/subset', recursive=True)[0]
         del_systems = {
@@ -112,13 +140,22 @@ class MetaEvalSEEDA(MetaEvalBase):
         data['references'] = [ref0, ref1]
         return data
     
-    def load_xml(self, xml_path: str, target_models: list[str]):
+    def load_xml(self, xml_path: str, target_models: list[str]) -> dict[str, list[list[int]]]:
+        '''Load a XML file.
+        
+        Args:
+            xml_path (str): Path to a XML file.
+            target_models (list[str]): Model names to be evaluated.
+
+        Returns:
+            dict[int, list[list[int]]]:
+                Dictionary containing sentence-level human evaluation rankings.
+                The data is stored for each source and annotator.
+                You can refer to the ranking by dict[src_id][annotator_id][system_id] = -rank.
+                Note that each element is *minus* rank, so higher values are higher quality. 
+        '''
         tree = ET.parse(xml_path)
         root = tree.getroot()
-        # The human scores will be 
-        #   human_scores[src_id][annotation_id][sys_id].
-        # Beucase multiple annotations may exist in the same sentence.
-        # Each element contains None or a minus rank of the system.
         human_scores = dict()
         for child in root.find('error-correction-ranking-result'):
             src_id = int(child.attrib['src-id'])
@@ -141,7 +178,20 @@ class MetaEvalSEEDA(MetaEvalBase):
         return human_scores
     
     def load_sentence_data(self) -> dict[str, int]:
-        '''Load evaluation data and human scores for sentence-level meta-evaluation.'''
+        '''Load sentence-level meta-evaluation data.
+        
+        Returns:
+            dict[str, list]: The meta-evaluation data contianing the following keys:
+                - "sources": Source sentences. The shape is (num_sentences, ).
+                - "hypotheses": Hypotheses sentences. The shape is (num_systems, num_sentences).
+                - "references": Reference sentences. The shape is (num_references, num_sentences).
+                - "models": The model names. This index corresponds to the first dimension of "hypotheses".
+                - "human_scores": Dictionary of Human scores for the systems. The shape is (num_sentences, num_systems, num_systems).
+                    - "EW_edit": Expected Wins scores using edit-based human evaluation.
+                    - "EW_sent": Expected Wins scores using sentence-based human evaluation.
+                    - "TS_edit": TrueSkill scores using edit-based human evaluation.
+                    - "TS_sent": TrueSkill scores using sentence-based human evaluation.
+        '''
         subset_dir = glob.glob('**/SEEDA/outputs/subset/', recursive=True)[0]
         data_dir = glob.glob('**/SEEDA/data/', recursive=True)[0]
         del_systems = {
@@ -181,7 +231,11 @@ class MetaEvalSEEDA(MetaEvalBase):
         data['references'] = [ref0, ref1]
         return data
     
-    def corr_system(self, metric: MetricBase) -> "SEEDASystemCorrOutput":
+    def corr_system(
+        self,
+        metric: MetricBase,
+        aggregation='default'
+    )-> "SEEDASystemCorrOutput":
         '''Compute system-level correlations.
 
         Args:
@@ -190,21 +244,7 @@ class MetaEvalSEEDA(MetaEvalBase):
         Returns:
             SEEDASystemCorrOutput: The correlations.
         '''
-        data = self.system_data
-        metric_scores = [
-            self.calc_system_score(
-                metric=metric,
-                sources=data['sources'],
-                hypotheses=hyps,
-                references=data['references']
-            ) for hyps in data['hypotheses']
-        ]
-        corrs = [
-            self.Corr(
-                pearson=float(pearsonr(metric_scores, data['human_score'][name])[0]),
-                spearman=float(spearmanr(metric_scores, data['human_score'][name])[0])
-            ) for name in self.SCORE_ID
-        ]
+        corrs = super().corr_system(metric, aggregation=aggregation)
         return self.SEEDASystemCorrOutput(
             ew_edit=corrs[0],
             ew_sent=corrs[1],
@@ -223,46 +263,7 @@ class MetaEvalSEEDA(MetaEvalBase):
         Returns:
             SEEDASentenceCorrOutput: The correlations.
         '''
-        data = self.sentence_data
-        metric_scores = [
-            self.calc_sentence_score(
-                metric=metric,
-                sources=data['sources'],
-                hypotheses=hyps,
-                references=data['references']
-            ) for hyps in data['hypotheses']
-        ]
-        corrs = []
-        num_sents = len(data['sources'])
-        num_sys = len(data['models'])
-        for name in ['edit', 'sent']:
-            human_scores = data['human_score'][name]
-            agree = 0
-            not_agree = 0
-            denominator = 0
-
-            for src_id in range(num_sents):
-                for annotate_id in range(len(human_scores[src_id])):
-                    for sys1, sys2 in itertools.combinations(range(num_sys), 2):
-                        m1 = metric_scores[sys1][src_id]
-                        m2 = metric_scores[sys2][src_id]
-                        # The human rank is minus ranking value,
-                        #   so higher values indicate higher quality.
-                        h1 = human_scores[src_id][annotate_id][sys1]
-                        h2 = human_scores[src_id][annotate_id][sys2]
-                        if None in [h1, h2]:
-                            continue
-                        if h1 == h2:
-                            continue
-                        denominator += 1
-                        if (m1 <= m2) == (h1 <= h2):
-                            agree += 1
-                        else:
-                            not_agree += 1
-            corr = self.Corr()
-            corr.accuracy = agree / denominator
-            corr.kendall = (agree - not_agree) / denominator
-            corrs.append(corr)
+        corrs = super().corr_sentence(metric)
         return self.SEEDASentenceCorrOutput(
             edit=corrs[0],
             sent=corrs[1]
@@ -271,55 +272,13 @@ class MetaEvalSEEDA(MetaEvalBase):
     def window_analysis_system(
         self,
         metric: MetricBase,
-        window: int=4
+        window: int = 4,
+        aggregation='default'
     ) -> "SEEDAWindowAnalysisSystemCorrOutput":
-        '''System-level window analysis
-
-        Args:
-            metric (MetricBase): The metric to be evaluated.
-            window (int): The window size.
-
-        Returns:
-            SEEDAWindowAnalysisSystemCorrOutput: The correlations.
-                - Contains .ew_edit, .ew_sent, .ts_edit, .ts_sent.
-                - Each is a dictinary: {(start_rank, end_rank): Corr}.
-        '''
-        data = self.system_data
-        num_systems = len(data['hypotheses'])
-        assert 2 <= window <= num_systems
-        metric_scores = [
-            self.calc_system_score(
-                metric=metric,
-                sources=data['sources'],
-                hypotheses=hyps,
-                references=data['references']
-            ) for hyps in data['hypotheses']
-        ]
-        corrs = []
-        for name in self.SCORE_ID:
-            raw_h_score = data['human_score'][name]
-            # Sort both metric's and human's scores by the human score
-            scores = sorted(
-                list(zip(metric_scores, raw_h_score)),
-                key=lambda x:x[1], reverse=True)
-            m_score = [s[0] for s in scores]
-            h_score = [s[1] for s in scores]
-            corr = [
-                self.Corr(
-                    pearson=float(pearsonr(
-                        m_score[i:i+window],
-                        h_score[i:i+window]
-                    )[0]),
-                    spearman=float(spearmanr(
-                        m_score[i:i+window],
-                        h_score[i:i+window]
-                    )[0])
-                ) for i in range(num_systems-window+1)
-            ]
-            corrs.append({(i, i+window-1): corr[i] for i in range(num_systems-window+1)})
+        corrs = super().window_analysis_system(metric, window, aggregation)
         return self.SEEDAWindowAnalysisSystemCorrOutput(
             ew_edit=corrs[0],
             ew_sent=corrs[1],
             ts_edit=corrs[2],
-            ts_sent=corrs[3]
+            ts_sent=corrs[3],
         )
