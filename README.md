@@ -1,6 +1,14 @@
 # gec-metrics
 A library for evaluation of Grammatical Error Correction.
 
+<p>
+<img alt="PyPI - Version" src="https://img.shields.io/pypi/v/gec-metrics"> 
+<img alt="GitHub License" src="https://img.shields.io/github/license/gotutiyan/gec-metrics"> 
+</p>
+
+**[[API Docs]](https://gec-metrics.readthedocs.io/en/latest/index.html)**
+**[[Demo]](https://gec-metrics-app.streamlit.app)**
+
 # Install
 ```sh
 pip install gec-metrics
