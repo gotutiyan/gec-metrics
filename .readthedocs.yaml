@@ -16,7 +16,7 @@ build:
     - asdf global uv latest
     - uv python install 3.11
     - uv sync --all-extras --all-groups
-    - uv run sphinx-apidoc --remove-old -d1 -Tfe -o docs/source ./ "$READTHEDOCS_REPOSITORY_PATH/**/*_test.py"
+    - uv run sphinx-apidoc --remove-old -d1 -Tfe -o docs/source ./src "$READTHEDOCS_REPOSITORY_PATH/**/*_test.py"
     - ls -l docs/source
     - uv run -m sphinx -T -b html -d docs/_build/doctrees -D language=en docs $READTHEDOCS_OUTPUT/html
 
