@@ -103,6 +103,44 @@ class MetricBase(abc.ABC):
         ]
         return final_scores
     
+    def run_expected_wins(
+        self,
+        pairwise_scores: list[list[list[int]]]
+    ) -> list[float]:
+        '''Apply Expected Wins given pairwise comparison scores.
+        This is the [Bojar+ 11] version: https://aclanthology.org/W11-2101/
+            Score(i) = \sum_j (wins(i, j) / (wins(i, j) + wins(j, i)))
+
+        Args:
+            pairwise_scores (list[list[list[int]]]): Pairwise comparison results.
+                The shape is (num_sents, num_systems, num_systems).
+                
+        Returns:
+            list[float]: System-level scores.
+        '''
+        num_systems = len(pairwise_scores[0])
+        ids = list(range(num_systems))
+        # score[sys1][sys2] = [wins, loses, ties]
+        scores = {i: {j: [0, 0, 0] for j in ids} for i in ids}
+        for p_scores in pairwise_scores:
+            for i, j in itertools.product(ids, ids):
+                idx = 0
+                if p_scores[i][j] == 0:
+                    # tie
+                    idx = 2
+                elif p_scores[i][j] == -1:
+                    # i-th system loses j-th system
+                    idx = 1
+                scores[i][j][idx] += 1
+        final_scores = [0 for _ in range(num_systems)]
+        for i in ids:
+            accumulated_score = 0
+            for j in ids:
+                if i == j:
+                    continue
+                accumulated_score += scores[i][j][0] / (scores[i][j][0] + scores[j][i][0])
+            final_scores[i] = accumulated_score / (num_systems - 1)
+        return final_scores
 
 class MetricBaseForReferenceBased(MetricBase, metaclass=abc.ABCMeta):
     '''Abstract class for refernece-based metrics.
@@ -283,6 +321,8 @@ class MetricBaseForReferenceBased(MetricBase, metaclass=abc.ABCMeta):
                 - "default" follows an original aggregation, e.g., average or accumulation.
                 - "trueskill" convert sentence-level scores into pairwise comparison results,
                     then apply TrueSkill. This is motivated by https://arxiv.org/abs/2502.09416.
+                - "expected_wins": convert sentence-level scores into pairwise comparison results,
+                    then apply Expected Wins.
         
         Retunrns:
             list[float]: System-level scores.
@@ -295,11 +335,20 @@ class MetricBaseForReferenceBased(MetricBase, metaclass=abc.ABCMeta):
                         sources, hyps, references
                     )
                 )
-        elif aggregation == 'trueskill':
+        else:
+            rating_functions = {
+                'trueskill': self.run_trueskill,
+                'expected_wins': self.run_expected_wins
+            }.get(aggregation, None)
+            if rating_functions is None:
+                raise ValueError(
+                    'The aggregation is invalid. Please choose from:',
+                    ['default', 'trueskill', 'expected_wins']
+                )
             pairwise_scores = self.score_pairwise(
                 sources, hypotheses, references
             )
-            scores = self.run_trueskill(pairwise_scores)
+            scores = rating_functions(pairwise_scores)
         return scores
     
     
@@ -392,6 +441,8 @@ class MetricBaseForReferenceFree(MetricBase, metaclass=abc.ABCMeta):
                 - "default" follows an original aggregation, e.g., average or accumulation.
                 - "trueskill" convert sentence-level scores into pairwise comparison results,
                     then apply TrueSkill. This is motivated by https://arxiv.org/abs/2502.09416.
+                - "expected_wins": convert sentence-level scores into pairwise comparison results,
+                    then apply Expected Wins.
         
         Retunrns:
             list[float]: System-level scores.
@@ -402,11 +453,20 @@ class MetricBaseForReferenceFree(MetricBase, metaclass=abc.ABCMeta):
                     sources, hyps
                 ) for hyps in hypotheses
             ]  # (num_systems, num_sentences)
-        elif aggregation == 'trueskill':
+        else:
+            rating_functions = {
+                'trueskill': self.run_trueskill,
+                'expected_wins': self.run_expected_wins
+            }.get(aggregation, None)
+            if rating_functions is None:
+                raise ValueError(
+                    'The aggregation is invalid. Please choose from:',
+                    ['default', 'trueskill', 'expected_wins']
+                )
             pairwise_scores = self.score_pairwise(
                 sources, hypotheses
             )
-            scores = self.run_trueskill(pairwise_scores)
+            scores = rating_functions(pairwise_scores)
         return scores
     
 class MetricBaseForSourceFree(MetricBase, metaclass=abc.ABCMeta):
@@ -502,6 +562,8 @@ class MetricBaseForSourceFree(MetricBase, metaclass=abc.ABCMeta):
                 - "default" follows an original aggregation, e.g., average or accumulation.
                 - "trueskill" convert sentence-level scores into pairwise comparison results,
                     then apply TrueSkill. This is motivated by https://arxiv.org/abs/2502.09416.
+                - "expected_wins": convert sentence-level scores into pairwise comparison results,
+                    then apply Expected Wins.
         
         Retunrns:
             list[float]: System-level scores.
@@ -512,11 +574,20 @@ class MetricBaseForSourceFree(MetricBase, metaclass=abc.ABCMeta):
                     hyps, references
                 ) for hyps in hypotheses
             ]  # (num_systems, num_sentences)
-        elif aggregation == 'trueskill':
+        else:
+            rating_functions = {
+                'trueskill': self.run_trueskill,
+                'expected_wins': self.run_expected_wins
+            }.get(aggregation, None)
+            if rating_functions is None:
+                raise ValueError(
+                    'The aggregation is invalid. Please choose from:',
+                    ['default', 'trueskill', 'expected_wins']
+                )
             pairwise_scores = self.score_pairwise(
                 hypotheses, references
             )
-            scores = self.run_trueskill(pairwise_scores)
+            scores = rating_functions(pairwise_scores)
         return scores
     
 def inputs_handler(
