@@ -12,6 +12,17 @@ class AttributorAdd(AttributorBase):
         src: str,
         edits: Union[list[errant.edit.Edit], list[list[errant.edit.Edit]]]
     ) -> list[dict]:
+        '''Generate edited sentence by applying each edit to src.
+        
+        Args:
+            src (str): source sentence.
+            edits (list[errant.edit.Edit]): Edit to be applied to the source.
+
+        Returns:
+            list[Dict]: Each element has two keys:
+                "sentence": An edited sentence.
+                "indices": Indices of edits that were applied to the source sentence.
+        '''
         edited = []
         for i, e in enumerate(edits):
             if isinstance(edits[0], errant.edit.Edit):
@@ -29,6 +40,16 @@ class AttributorAdd(AttributorBase):
         sent_level_score: Optional[float] = None,
         indices: Optional[list[tuple]] = None
     ) -> list[float]:
+        '''Normalize each score by the sum of the scores.
+
+        Args:
+            scores (list[float]): \delta M() scores.
+            sent_level_score (Optional[float]): Used when normalization.
+            indices (Optional[list[Tuple]]): Which edits were applied to the source.
+        
+        Returns:
+            list[float]: Post pocessed scores.
+        '''
         sum_scores = sum(scores)
         if sum_scores == 0:
             weight = 0

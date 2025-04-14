@@ -8,14 +8,26 @@ from gecommon import apply_edits
 class AttributorBase(abc.ABC):
     @dataclass
     class Config:
+        '''Attribution configuration.
+            - metric (MetricBase): Metric instance based on gec_metrics.metrics.MetricBase
+            - max_num_edits (int): Ignore a hypothesis when the number of edits exceeds this value.
+            - errant_language (str): Spacy language for ERRANT.
+            - quiet (bool): If False some logs will be shown.
+        '''
         metric: MetricBase = None
         max_num_edits: int = float('inf')
         errant_language: str = 'en'
         quiet: bool = True
-        num_samples: int = 64  # T for the Shapley sampling values.
 
     @dataclass
     class AttributionOutput:
+        '''Attribution output.
+            - sent_score (float): The overall impact of edits: \delta M(S, H) = M(S, H) - M(S, S).
+            - src_score (float): Source score: M(S, S).
+            - attribution_scores (list[float]): Attribution score for each edit.
+            - edits (list[errant.edit.Edit]): Edits extracted by ERRANT.
+            - src (str): Source sentence.
+        '''
         sent_score: float = None
         src_score: float = None
         attribution_scores: list[float] = None
@@ -35,6 +47,7 @@ class AttributorBase(abc.ABC):
         edits: list[errant.edit.Edit]
     ) -> list[dict]:
         '''Generate edited sentence.
+        How the edits are applied depends on the attribution method.
         
         Args:
             src (str): source sentence.
@@ -77,7 +90,7 @@ class AttributorBase(abc.ABC):
             src (str): A source sentence.
             hyp (Optional[str]): An edited sentence.
             inputs_edits (Optional[list[errant.edit.Edit]]): 
-                An alternative way to pass the edited sentence, as edit objects.
+                An alternative way to pass the hyp, as edit objects.
 
         Returns:
             AttributorOutput: Attributor scores and related information.

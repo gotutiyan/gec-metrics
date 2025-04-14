@@ -12,6 +12,17 @@ class AttributorSub(AttributorBase):
         src: str,
         edits: Union[list[errant.edit.Edit], list[list[errant.edit.Edit]]]
     ) -> list[dict]:
+        '''Generate edited sentence by removing each edit from the reference.
+        
+        Args:
+            src (str): source sentence.
+            edits (list[errant.edit.Edit]): Edit to be applied to the source.
+
+        Returns:
+            list[Dict]: Each element has two keys:
+                "sentence": An edited sentence.
+                "indices": Indices of edits that were removed from the reference sentence.
+        '''
         edited = []
         for i, e in enumerate(edits):
             # Get edits without i-th edit
@@ -32,6 +43,16 @@ class AttributorSub(AttributorBase):
         sent_level_score: Optional[float] = None,
         indices: Optional[list[tuple]] = None
     ) -> list[float]:
+        '''Normalize each score by the sum of the scores.
+
+        Args:
+            scores (list[float]): \delta M() scores.
+            sent_level_score (Optional[float]): Used when normalization.
+            indices (Optional[list[Tuple]]): Which edits were applied to the source.
+        
+        Returns:
+            list[float]: Post pocessed scores.
+        '''
         scores = [sent_level_score - s for s in scores]
         sum_scores = sum(scores)
         if sum_scores == 0:

@@ -13,6 +13,17 @@ class AttributorShapleySampling(AttributorBase):
         src: str,
         edits: list[errant.edit.Edit]
     ) -> list[dict]:
+        '''Generate edited sentence by applying sampled patterns of edits.
+        
+        Args:
+            src (str): source sentence.
+            edits (list[errant.edit.Edit]): Edit to be applied to the source.
+
+        Returns:
+            list[Dict]: Each element has two keys:
+                "sentence": An edited sentence.
+                "indices": Indices of edits that were applied to the source sentence.
+        '''
         edited = []
         indices = list(range(len(edits)))
         naive_num_samples = 1
@@ -57,6 +68,16 @@ class AttributorShapleySampling(AttributorBase):
         sent_level_score: Optional[float] = None,
         indices: Optional[list[tuple]] = None
     ) -> list[float]:
+        '''Calculate Shapley sampling values.
+
+        Args:
+            scores (list[float]): \delta M() scores.
+            sent_level_score (Optional[float]): Used when normalization.
+            indices (Optional[list[Tuple]]): Which edits were applied to the source.
+        
+        Returns:
+            list[float]: Post pocessed scores.
+        '''
         num_edits = max(len(i) for i in indices)
         num_orders = len(scores) // num_edits
         assert len(scores) == num_edits * num_orders

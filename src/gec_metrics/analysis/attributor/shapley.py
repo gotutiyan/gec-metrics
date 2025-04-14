@@ -13,6 +13,17 @@ class AttributorShapley(AttributorBase):
         src: str,
         edits: Union[list[errant.edit.Edit], list[list[errant.edit.Edit]]]
     ) -> list[dict]:
+        '''Generate edited sentence by applying all patterns of edits.
+        
+        Args:
+            src (str): source sentence.
+            edits (list[errant.edit.Edit]): Edit to be applied to the source.
+
+        Returns:
+            list[Dict]: Each element has two keys:
+                "sentence": An edited sentence.
+                "indices": Indices of edits that were applied to the source sentence.
+        '''
         edited = []
         num_edits = len(edits)
         for i in range(2 ** (num_edits)):
@@ -36,6 +47,16 @@ class AttributorShapley(AttributorBase):
         sent_level_score: Optional[float] = None,
         indices: Optional[list[tuple]] = None
     ) -> list[float]:
+        '''Caluclate Shapley values.
+
+        Args:
+            scores (list[float]): \delta M() scores.
+            sent_level_score (Optional[float]): Used when normalization.
+            indices (Optional[list[Tuple]]): Which edits were applied to the source.
+        
+        Returns:
+            list[float]: Post pocessed scores.
+        '''
         def shapley_weight(n, s):
             return (math.perm(s) * math.perm(n-s-1)) / math.perm(n)
         
