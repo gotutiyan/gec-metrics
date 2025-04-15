@@ -1,4 +1,4 @@
-# Metrics
+# Metric Introduction
 
 ## Import
 
@@ -8,7 +8,7 @@ Each metric is implemented as a class. You can import the class from `gec_metric
 from gec_metrics.metrics import ERRANT
 ```
 
-Alternatively, you can use the get_metric() method. A list of available metric IDs can be obtained using get_metric_ids().
+Alternatively, you can use the `get_metric()` method. A list of available metric IDs can be obtained using `get_metric_ids()`.
 
 ```python
 from gec_metrics import get_metric, get_metric_ids
@@ -30,7 +30,7 @@ metric = ERRANT(ERRANT.Config(
 metric = ERRANT()
 ```
 
-The default configuration can be found via `<metric_class>.Config()`:
+You can see the default configuration via `<metric_class>.Config()`:
 
 ```python
 from gec_metrics.metrics import ERRANT

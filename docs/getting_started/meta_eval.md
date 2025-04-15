@@ -1,4 +1,4 @@
-# Meta-evaluation
+# Meta-evaluation Introduction
 
 gec-metrics also supports meta-evaluation. 
 
@@ -23,7 +23,7 @@ Alternatively, you can use `get_meta_eval()`. Available IDs can be obtained usin
 ```python
 from gec_metrics import get_meta_eval, get_meta_eval_ids
 metric_cls = get_metric('seeda')
-print(get_metric_ids())  # [']
+print(get_meta_eval_ids())  # ['gjg', 'seeda']
 ```
 
 ## Initialize

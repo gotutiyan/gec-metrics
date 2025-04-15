@@ -17,12 +17,19 @@ gec-metrics is a library that supports various evaluation metrics through a unif
    :maxdepth: 2
    :caption: Getting Started:
 
-   getting_started/install
-   getting_started/metrics
-   getting_started/meta_eval
+   :doc:`getting_started/install`
+   :doc:`getting_started/metrics`
+   :doc:`getting_started/meta_eval`
 
-
+.. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Development:
+
+   :doc:`develop/metric`
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: API Reference:
 
    source/gec_metrics
