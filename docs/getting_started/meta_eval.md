@@ -72,3 +72,44 @@ meta = MetaEvalSEEDA()
 sent_results = meta.corr_sentence(metric, aggregation='default')
 print(sent_results)
 ```
+
+## Analysis
+
+### Window analysis
+
+The window analysis proposed in SEEDA [[Kobayashi+ 24]](https://aclanthology.org/2024.tacl-1.47/) calculates correlations over subsets of systems extracted using a fixed-width window from systems sorted by human rank. This allows for analyzing the evaluation performance on sets of top-ranked or bottom-ranked systems according to human evaluation, as well as assessing the robustness of the evaluation across diverse system sets.
+
+```python
+from gec_metrics.meta_eval import MetaEvalSEEDA
+from gec_metrics.metrics import ERRANT
+import matplotlib.pyplot as plt
+metric = ERRANT()
+meta = MetaEvalSEEDA()
+window_results = meta.window_analysis_system(metric, window=4, aggregation='default')
+fig = meta.window_analysis_plot(window_results.ts_edit)
+plt.savefig('window-analysis.png')
+```
+
+The result will be like this:
+
+![window-fig](../figs/window-analysis.png)
+
+
+### Pairwise analysis
+
+Pairwise analysis provides a more detailed examination of sentence-level meta-evaluation results. It groups the sentence-level meta-evaluation results based on human evaluation rank pairs and calculates the agreement rate within each group. This facilitates the analysis of trends, such as whether the metric demonstrates better agreement for pairs with larger differences in human evaluation ranks.
+
+```python
+from gec_metrics.meta_eval import MetaEvalSEEDA
+from gec_metrics.metrics import ERRANT
+import matplotlib.pyplot as plt
+metric = ERRANT()
+meta = MetaEvalSEEDA()
+pairwise_results = meta.pairwise_analysis(metric)
+fig = meta.pairwise_analysis_plot(pairwise_results['edit'])
+plt.savefig('pairwise-analysis.png')
+```
+
+The result will be like this:
+
+![pairwise-fig](../figs/pairwise-analysis.png)

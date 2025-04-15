@@ -18,14 +18,15 @@ Getting started
 - :doc:`getting_started/install`
 - :doc:`getting_started/metrics`
 - :doc:`getting_started/meta_eval`
+- :doc:`getting_started/analysis`
 
 Development
 ===========
-:doc:`develop/metric`
+- :doc:`develop/metric`
 
 API Reference
 =============
-:doc:`source/gec_metrics`
+- :doc:`source/gec_metrics`
 
 .. toctree::
    :maxdepth: 2
@@ -36,6 +37,7 @@ API Reference
    getting_started/install
    getting_started/metrics
    getting_started/meta_eval
+   getting_started/analysis
 
 .. toctree::
    :maxdepth: 2
