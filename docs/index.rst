@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 gec-metrics documentation
-=========================
+#########################
 
 .. Add your content using ``reStructuredText`` syntax. See the
 .. `reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
@@ -12,24 +12,41 @@ gec-metrics documentation
 
 gec-metrics is a library that supports various evaluation metrics through a unified interface.
 
+Getting started
+===============
+
+- :doc:`getting_started/install`
+- :doc:`getting_started/metrics`
+- :doc:`getting_started/meta_eval`
+
+Development
+===========
+:doc:`develop/metric`
+
+API Reference
+=============
+:doc:`source/gec_metrics`
 
 .. toctree::
    :maxdepth: 2
    :caption: Getting Started:
+   :hidden:
 
-   :doc:`getting_started/install`
-   :doc:`getting_started/metrics`
-   :doc:`getting_started/meta_eval`
+
+   getting_started/install
+   getting_started/metrics
+   getting_started/meta_eval
 
 .. toctree::
    :maxdepth: 2
    :caption: Development:
+   :hidden:
 
-   :doc:`develop/metric`
-
+   develop/metric
 
 .. toctree::
    :maxdepth: 2
    :caption: API Reference:
+   :hidden:
 
    source/gec_metrics
