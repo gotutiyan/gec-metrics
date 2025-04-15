@@ -10,8 +10,18 @@ gec-metrics documentation
 .. `reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
 .. documentation for details.
 
+gec-metrics is a library that supports various evaluation metrics through a unified interface.
+
 
 .. toctree::
+   :maxdepth: 2
+   :caption: Getting Started:
+
+   getting_started/install
+   getting_started/metrics
+   getting_started/meta_eval
+
+
    :maxdepth: 2
    :caption: Contents:
 

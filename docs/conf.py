@@ -17,7 +17,8 @@ release = 'v0.1.1'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
-    "sphinx.ext.viewcode"
+    "sphinx.ext.viewcode",
+    "myst_parser"
 ]
 
 templates_path = ['_templates']
@@ -34,3 +35,8 @@ html_static_path = ['_static']
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../src'))
+
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.md': 'markdown',
+}
