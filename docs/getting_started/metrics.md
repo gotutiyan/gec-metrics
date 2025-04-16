@@ -16,6 +16,20 @@ metric_cls = get_metric('errant')
 print(get_metric_ids())  # ['scribendi', 'impara', 'some', ...
 ```
 
+gec-metrics currently supports the following metrics:
+
+|Metric|Class (`gec_metrics.metrics.<HERE>`)|References|
+|:--|:--|:--|
+|ERRANT|`ERRANT`|[[Felice+ 16]](https://aclanthology.org/C16-1079/) [[Bryant+ 17]](https://aclanthology.org/P17-1074/)|
+|PT-ERRANT|`PTERRANT`|[[Gong+ 22]](https://aclanthology.org/2022.emnlp-main.463/)|
+|GoToScorer|`GoToScorer`|[[Goto+ 20]](https://aclanthology.org/2020.coling-main.188/)|
+|GLEU|`GLEU`|[[Napoles+ 15]](https://aclanthology.org/P15-2097/)|
+|GREEN|`GREEN`|[[Koyama+ 24]](https://aclanthology.org/2024.inlg-main.25/)|
+|SOME|`SOME`|[[Yoshimura+ 20]](https://aclanthology.org/2020.coling-main.573/)|
+|Scribendi|`Scribendi`|[[Islam+ 21]](https://aclanthology.org/2021.emnlp-main.239/)|
+|IMPARA|`IMPARA`|[[Maeda+ 22]](https://aclanthology.org/2022.coling-1.316/)|
+|LLM metrics|`LLMKobayashi24**`|[[Kobayashi+24]](https://aclanthology.org/2024.bea-1.6/)|
+
 ## Initialize
 
 A Config class is defined for each class and can be passed during initialization. For example, the beta parameter for the ERRANT F-beta metric can be specified via Config. If no config is provided, the default settings are used.

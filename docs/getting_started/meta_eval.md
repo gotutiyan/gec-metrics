@@ -26,6 +26,13 @@ metric_cls = get_meta_eval('seeda')
 print(get_meta_eval_ids())  # ['gjg', 'seeda']
 ```
 
+gec-metrics currently supports the following meta-evaluation frameworks:
+|Framework|Class (`gec_metrics.meta_eval.<HERE>`)|References|
+|:--|:--|:--|
+|GJG15|`MetaEvalGJG`|[[Grundkiewicz+ 15]](https://aclanthology.org/D15-1052/)|
+|SEEDA|`MetaEvalSEEDA`|[[Kobayashi+ 24]](https://aclanthology.org/2024.tacl-1.47/)|
+
+
 ## Initialize
 
 Similar to metrics, initialize them by passing a Config object as needed.
@@ -69,7 +76,7 @@ from gec_metrics.meta_eval import MetaEvalSEEDA
 from gec_metrics.metrics import GREEN
 metric = GREEN()
 meta = MetaEvalSEEDA()
-sent_results = meta.corr_sentence(metric, aggregation='default')
+sent_results = meta.corr_sentence(metric)
 print(sent_results)
 ```
 
