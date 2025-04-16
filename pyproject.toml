@@ -1,6 +1,6 @@
 [project]
 name = "gec-metrics"
-version = "0.1.1"
+version = "0.1.2"
 description = "A library for Grammatical Error Correction evaluation."
 readme = "README.md"
 authors = [
@@ -38,6 +38,7 @@ dev = [
 docs = [
     "sphinx-rtd-theme>=3.0.2",
     "sphinx>=8.2.3",
+    "myst-parser>=4.0.1",
 ]
 
 [project.scripts]
