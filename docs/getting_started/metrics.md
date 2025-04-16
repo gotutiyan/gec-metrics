@@ -104,8 +104,7 @@ hyps3 = gec_model3(sources)
 pair_scores: list[list[list[float]]] = metric.rank_pairwise(
     sources,
     [hyps1, hyps2, hyps3],
-    references,
-    aggregation="default"
+    references
 )
 print(pair_scores)
 '''Output example.

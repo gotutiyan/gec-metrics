@@ -7,6 +7,8 @@ Several `MetricBase**` classes are available, primarily designed for different e
 - `MetricBaseForReferenceFree`: Class for reference-free metrics.
 - `MetricBaseForSourceFree`: Class for metrics that evaluate using only hypotheses and references (e.g., BERTScore).
 
+The `score_sentence()` method is defined as an abstract method and must therefore be overridden. Furthermore, since the default implementation of `score_corpus()` calculates the average of the sentence-level scores, this method should also be overridden if you intend to use a different aggregation method.
+
 After implementing a metric by inheriting from one of these base classes, you can perform meta-evaluation using the meta-evaluation components of `gec-metrics`.
 
 ## An exmaple

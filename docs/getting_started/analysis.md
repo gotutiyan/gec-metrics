@@ -1,4 +1,4 @@
-# Anakysis Introduction
+# Analysis Introduction
 
 The analysis module is defined for the purpose of further analysis of metrics. Currently, edit-level attribution methods are implemented.
 

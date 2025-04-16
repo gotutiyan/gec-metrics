@@ -22,7 +22,7 @@ Alternatively, you can use `get_meta_eval()`. Available IDs can be obtained usin
 
 ```python
 from gec_metrics import get_meta_eval, get_meta_eval_ids
-metric_cls = get_metric('seeda')
+metric_cls = get_meta_eval('seeda')
 print(get_meta_eval_ids())  # ['gjg', 'seeda']
 ```
 
