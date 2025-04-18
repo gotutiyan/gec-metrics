@@ -75,6 +75,7 @@ gecmetrics-gen-config > config.yaml
 # Metrics
 
 gec-metrics supports the following metrics.  
+For metrics where an official implementation is publicly available, we have verified that our evaluation results are consistent with those produced by the official implementation.  
 All of arguments in the following examples indicate default values.
 
 ## Reference-based
