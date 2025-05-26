@@ -12,10 +12,20 @@ from gecommon import CachedERRANT
 import abc
 import outlines
 from transformers import BitsAndBytesConfig, AutoTokenizer
+import torch
 
 class LLMKobayashi24(MetricBaseForReferenceFree):
     @dataclass
     class Config(MetricBaseForReferenceFree.Config):
+        '''LLMKobayashi24** configuration.
+
+        Args:
+            model (str): The name of the LLM. This is typically the ID of a Hugging Face model or an OpenAI model.
+            cache (str): Filename for caching model inputs and outputs.
+            seed (int): Seed value.
+            criteria (str): Specifies the evaluation aspect. Can be one of None, 'grammaticality', 'fluency', or 'meaning'.
+            instruction_template (str): Template for the instruction. Must include [SOURCE] and [CORRECTION] placeholders.
+        '''
         model: str = None
         cache: str = None
         seed: int = 777
@@ -119,11 +129,18 @@ The output should be a markdown code snippet formatted in the following schema, 
 
     def sample_sentences(
         self, hypotheses: list[str], max_n: int = 5
-    ):
+    ) -> list[str]:
         '''Sample max_n sentences from hypotheses.
         LLMKobayashi24** metrics receives the hypotheses up to five.
         So if the number of distinct hypotheses is larger than five, we need to sample five sentences.
         In this implementation, we employ simple strategy: choose the five hypothesis from high frequency.
+
+        Args:
+            hypotheses (list[str]): Hypotheses of all systems.
+            max_n (int): The number of sentences to be sampled.
+        
+        Returns:
+            list[str]: The sampled sentences.
         '''
         hyp2freq = Counter(hypotheses)
         if len(hyp2freq) <= max_n:
@@ -141,6 +158,13 @@ The output should be a markdown code snippet formatted in the following schema, 
         self, elems: list, target_e
     ) -> list[int]:
         '''Multiple version of list.index()
+
+        Args:
+            elems (list[any]): The list containing any values.
+            target_e (any): Value for which you want to know the index.
+        
+        Returns:
+            list[int]: Indices of `target_e` in `elems`.
         '''
         return [i for i, e in enumerate(elems) if e == target_e]
     
@@ -283,12 +307,13 @@ class LLMKobayashi24OpenAISent(LLMKobayashi24):
     '''LLM-S with OpenAI models.'''
     @dataclass
     class Config(LLMKobayashi24.Config):
-        '''OpenAI configuration
-            - model (str): model name.
-            - organization (str): Your organization key.
-            - api_key (str): Your api key.
-            - base_url (str): You can igonore this when using OpenAI model.
-                When using Gemini models, specify an appropriate url.
+        '''OpenAI configuration.
+
+        Args:
+            model (str): Model name.
+            organization (str): Your organization key.
+            api_key (str): Your api key.
+            base_url (str): When using Gemini models, specify an appropriate url.
         '''
         model: str = 'gpt-4o-mini-2024-07-18'
         organization: str = None
@@ -372,13 +397,22 @@ following schema, including the leading and trailing "```json" and "```":
             str: Another representation of the hypothesis.
         '''
         edits = self.errant.extract_edits(src, hyp)
-        return ' '.join([f"{e.o_str}→{e.c_str}" for e in edits])
+        return ' '.join([f"[{e.o_str}→{e.c_str}]" for e in edits])
 
 class LLMKobayashi24HFSent(LLMKobayashi24):
     '''LLM-S with huggingface models.'''
     @dataclass
     class Config(LLMKobayashi24.Config):
+        '''Hugging Face configuration.
+        
+        Args:
+            model (str): Hugging Face Model name.
+            quantization (str): Quantization setting. None, '4bit' or '8bit'.
+            dtype (str): 
+        '''
         model: str = 'meta-llama/Llama-2-13b-chat-hf'
+        quantization: str = '8bit'
+        dtype: str = 'bfloat16'
 
     def __init__(self, config = None):
         super().__init__(config)
@@ -390,15 +424,27 @@ class LLMKobayashi24HFSent(LLMKobayashi24):
         self.tokenizer = AutoTokenizer.from_pretrained(self.config.model)
 
     def load_client(self):
+        model_kwargs = dict()
+        if self.config.dtype == 'float32':
+            model_kwargs['torch_dtype'] = torch.float32
+        elif self.config.dtype == 'bfloat16':
+            model_kwargs['torch_dtype'] = torch.bfloat16
+        else:
+            raise ValueError(f'Select dtype from "float32" or "float16".')
+        
+        if self.config.quantization == '4bit':
+            model_kwargs['quantization_config'] = BitsAndBytesConfig(
+                load_in_4bit=True
+            )
+        elif self.config.quantization == '8bit':
+            model_kwargs['quantization_config'] = BitsAndBytesConfig(
+                load_in_8bit=True
+            )
+            
         return outlines.models.transformers(
             self.config.model,
             device='auto',
-            model_kwargs={
-                'quantization_config': BitsAndBytesConfig(
-                    # load_in_4bit=True,
-                    load_in_8bit=True,
-                )
-            }
+            **{"model_kwargs": model_kwargs}
         )
     
     def call_client(self, instruction, response_format):
@@ -464,4 +510,4 @@ following schema, including the leading and trailing "```json" and "```":
             str: Another representation of the hypothesis.
         '''
         edits = self.errant.extract_edits(src, hyp)
-        return ' '.join([f"{e.o_str}→{e.c_str}" for e in edits])
+        return ' '.join([f"[{e.o_str}→{e.c_str}]" for e in edits])
