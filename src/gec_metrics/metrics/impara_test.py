@@ -13,8 +13,9 @@ HYPS = [
     'This is no change .'
 ]
 cases = [
-    (0.0, 0.80618088444074, [0.9970312118530273, 0.9480968117713928, 0.4734146296977997]),
-    (1.01, 0.0, [0.0, 0.0, 0.0]),
+    (-999, 0.80618088444074, [0.9970312118530273, 0.9480968117713928, 0.4734146296977997]),  # no filter
+    (0.9, 0.15780487656593323, [0.0, 0.0, 0.4734146296977997]),
+    (1.01, 0.0, [0.0, 0.0, 0.0])  # all are filtered
 ]
 
 class TestIMPARA:
@@ -22,7 +23,7 @@ class TestIMPARA:
     def test_metric(self, threshold, gold_corpus_score, gold_sent_score):
         scorer = IMPARA(IMPARA.Config(
             model_qe='gotutiyan/IMPARA-QE',
-            model_se='bert-base-cased',
+            model_se='google-bert/bert-base-cased',
             threshold=threshold
         ))
         corpus_score = scorer.score_corpus(

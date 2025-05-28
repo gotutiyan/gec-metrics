@@ -5,19 +5,71 @@ from transformers import (
     PreTrainedTokenizer
 )
 from .base import MetricBase, MetricBaseForReferenceFree
+from .utils import AutoModelForSequenceClassificationMeanPool
 import torch
 import torch.nn as nn
 import math
 from dataclasses import dataclass
 
-class SimilarityEstimator(nn.Module):
-    '''This class computes cosine similarity.
-    '''
-    def __init__(self, model_id: str):
-        super().__init__()
-        self.model = AutoModel.from_pretrained(model_id)
-        self.model.eval()
-    
+class SimilarityEstimator(MetricBaseForReferenceFree):
+    @dataclass
+    class Config(MetricBaseForReferenceFree.Config):
+        model: str = 'google-bert/bert-base-cased'
+        batch_size: int = 32
+        max_length: int = 128
+        no_cuda: bool = False
+
+    def __init__(self, config: Config=None):
+        super().__init__(config)
+        self.model = AutoModel.from_pretrained(self.config.model).eval()
+        self.tokenizer = AutoTokenizer.from_pretrained(self.config.model)
+        if not self.config.no_cuda and torch.cuda.is_available():
+            self.model.cuda()
+
+    def score_sentence(
+        self,
+        sources: list[str],
+        hypotheses: list[str]
+    ) -> list[float]:
+        '''Compute similarity scores.
+
+        Args:
+            sources (list[str]): Source sentence.
+                The shape is (num_sentences, )
+            hypotheses (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
+        
+        Returns:
+            list[float]: The similarity scores.
+        '''
+        bsz = self.config.batch_size
+        assert len(sources) == len(hypotheses)
+        similarities = None
+        tokenizer_args = {
+            'max_length': self.config.max_length,
+            'padding': "max_length",
+            'truncation': True,
+            'return_tensors': 'pt'
+        }
+        for i in range(0, len(sources), bsz):
+            src_encode = self.tokenizer(sources[i: i+bsz], **tokenizer_args)
+            hyp_encode = self.tokenizer(hypotheses[i: i+bsz], **tokenizer_args)
+            src_encode = {k: v.to(self.model.device) for k, v in src_encode.items()}
+            hyp_encode = {k: v.to(self.model.device) for k, v in hyp_encode.items()}
+            out = self.forward(
+                src_encode['input_ids'],
+                src_encode['attention_mask'],
+                hyp_encode['input_ids'],
+                hyp_encode['attention_mask'],
+            )
+            if similarities is None:
+                similarities = out.view(-1)
+            else:
+                similarities = torch.cat([similarities, out.view(-1)], dim=-1)
+        assert len(similarities) == len(sources)
+        return similarities
+
+    @torch.no_grad()
     def forward(
         self,
         src_input_ids: torch.Tensor,
@@ -86,30 +138,100 @@ class IMPARA(MetricBaseForReferenceFree):
     @dataclass
     class Config(MetricBase.Config):
         '''IMPARA configuration.
-            - model_qe (str): Quality estimation model.
-            - model_se (str): Similarity estimation model.
-            - max_length (int): Maximum length of inputs.
-            - threshold (float): Threshold for the similarity score.
-            - no_cuda (bool): If True, work on CPU.
-            - batch_size (int): Batch size for the inference.
+
+        Args:
+            model_qe (str): Quality estimation model.
+            model_se (str): Similarity estimation model.
+            pooling (str): Pooling method. 'cls' or 'mean'.
+            max_length (int): Maximum length of inputs.
+            threshold (float): Threshold for the similarity score.
+            no_cuda (bool): If True, work on CPU.
+            batch_size (int): Batch size for the inference.
         '''
         model_qe: str = 'gotutiyan/IMPARA-QE'
-        model_se: str = 'bert-base-cased'
+        model_se: str = 'google-bert/bert-base-cased'
+        pooling: str = 'cls'
         max_length: int = 128
         threshold: float = 0.9
         no_cuda: bool = False
         batch_size: int = 32
 
-    def __init__(self, config: Config = None):
+    def __init__(self, config: Config=None):
         super().__init__(config)
+        assert self.config.pooling in ['cls', 'mean'], "The config.pooling should be in ['cls', 'mean']."
+        self.similarity_estimator = SimilarityEstimator(SimilarityEstimator.Config(
+            model=self.config.model_se,
+            batch_size=self.config.batch_size,
+            max_length=self.config.max_length,
+            no_cuda=self.config.no_cuda
+        ))
         self.model_qe = AutoModelForSequenceClassification.from_pretrained(self.config.model_qe).eval()
         self.tokenizer_qe = AutoTokenizer.from_pretrained(self.config.model_qe)
-        self.model_se = SimilarityEstimator(self.config.model_se).eval()
-        self.tokenizer_se = AutoTokenizer.from_pretrained(self.config.model_se)
-        if not self.config.no_cuda:
+        if not self.config.no_cuda and torch.cuda.is_available():
             self.model_qe.cuda()
-            self.model_se.cuda()
-    
+        if self.config.pooling == 'mean':
+            # Wrap the model to use a mean pooling instead of CLS representation.
+            self.model_qe = AutoModelForSequenceClassificationMeanPool(
+                self.model_qe
+            )
+
+    def score_sentence_se(
+        self, sources: list[str], hypotheses: list[str]
+    ) -> list[float]:
+        '''Compute similarity scores.
+
+        Args:
+            sources (list[str]): Source sentence.
+                The shape is (num_sentences, )
+            hypotheses (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
+        
+        Returns:
+            list[float]: The similarity scores.
+        '''
+        return self.similarity_estimator.score_sentence(
+            sources, hypotheses
+        )
+
+    def score_sentence_qe(
+        self, hypotheses: list[str]
+    ) -> list[float]:
+        '''Compute quality scores.
+
+        Args:
+            hypotheses (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
+        
+        Returns:
+            list[float]: The quality scores.
+        '''
+        batch_size = self.config.batch_size
+        scores = None
+        for i in range(0, len(hypotheses), batch_size):
+            tokenizer_args = {
+                'max_length': self.config.max_length,
+                'padding': "max_length",
+                'truncation': True,
+                'return_tensors': 'pt'
+            }
+            batch = hypotheses[i: i+batch_size]
+            hyp_encode_qe = self.tokenizer_qe(
+                batch, **tokenizer_args
+            )
+            hyp_encode_qe = {k: v.to(self.model_qe.device) for k, v in hyp_encode_qe.items()}
+            qe_scores = self.model_qe(
+                hyp_encode_qe['input_ids'],
+                hyp_encode_qe['attention_mask']
+            ).logits.view(-1)
+            qe_scores = torch.sigmoid(qe_scores)
+            if scores is None:
+                scores = qe_scores
+            else:
+                scores = torch.cat([scores, qe_scores], dim=-1)
+        assert len(scores) == len(hypotheses)
+        return scores
+        
+    @torch.no_grad()
     def score_sentence(
         self,
         sources: list[str],
@@ -127,41 +249,14 @@ class IMPARA(MetricBaseForReferenceFree):
             list[float]: The sentence-level scores.
         '''
         scores = []
-        batch_size = self.config.batch_size
-        for i in range(math.ceil(len(sources) / batch_size)):
-            tokenizer_args = {
-                'max_length': self.config.max_length,
-                'padding': "max_length",
-                'truncation': True,
-                'return_tensors': 'pt'
-            }
-            hyp_encode_qe = self.tokenizer_qe(
-                hypotheses[i*batch_size:(i+1)*batch_size],
-                **tokenizer_args
-            )
-            src_encode_se = self.tokenizer_se(
-                sources[i*batch_size:(i+1)*batch_size],
-                **tokenizer_args
-            )
-            hyp_encode_se = self.tokenizer_se(
-                hypotheses[i*batch_size:(i+1)*batch_size],
-                **tokenizer_args
-            )
-            hyp_encode_qe = {k: v.to(self.model_qe.device) for k, v in hyp_encode_qe.items()}
-            src_encode_se = {k: v.to(self.model_se.device) for k, v in src_encode_se.items()}
-            hyp_encode_se = {k: v.to(self.model_se.device) for k, v in hyp_encode_se.items()}
-            with torch.no_grad():
-                qe_scores = self.model_qe(
-                    hyp_encode_qe['input_ids'],
-                    hyp_encode_qe['attention_mask']
-                ).logits.view(-1)
-                se_scores = self.model_se(
-                    src_encode_se['input_ids'],
-                    src_encode_se['attention_mask'],
-                    hyp_encode_se['input_ids'],
-                    hyp_encode_se['attention_mask'],
-                ).view(-1)
-            qe_scores = torch.sigmoid(qe_scores)
-            qe_scores[se_scores < self.config.threshold] = 0
-            scores += qe_scores.tolist()
+        assert len(sources) == len(hypotheses)
+        se_scores = self.score_sentence_se(
+            sources, hypotheses
+        )
+        qe_scores = self.score_sentence_qe(
+            hypotheses
+        )
+        qe_scores[se_scores <= self.config.threshold] = 0
+        scores += qe_scores.tolist()
+        assert len(scores) == len(sources)
         return scores

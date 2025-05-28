@@ -225,7 +225,8 @@ metric_cls = get_metric('impara')
 metric = metric_cls(metric_cls.Config(
     model_qe='gotutiyan/IMPARA-QE',  # The model name or path for quality estimation.
     model_se='bert-base-cased',  # The model name or path for similarity estimation.
-    threshold=0.9  # The threshold for the similarity score.
+    threshold=0.9,  # The threshold for the similarity score.
+    pooling='cls'  # Pooling way for the QE model. 'cls' or 'mean'.
 ))
 ```
 
