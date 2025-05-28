@@ -14,6 +14,15 @@ from dataclasses import dataclass
 class SimilarityEstimator(MetricBaseForReferenceFree):
     @dataclass
     class Config(MetricBaseForReferenceFree.Config):
+        '''Similarity Estimator configuration.
+
+        Args:
+            model (str): Model name to compute similarity.
+            batch_size (int): Batch size during inference.
+            max_length (int): Maximum length in tokenization. 
+                The input is truncated if longer than it.
+            no_cuda (bool): If True, it will work on CPU.
+        '''
         model: str = 'google-bert/bert-base-cased'
         batch_size: int = 32
         max_length: int = 128
@@ -84,9 +93,9 @@ class SimilarityEstimator(MetricBaseForReferenceFree):
                 The shape is (num_batch, sequence_length)
             src_attention_mask (torch.Tensor): The attention mask to handle padding.
                 The shape is (num_batch, sequence_length)
-            src_input_ids (torch.Tensor): Tokenized corrected sentences.
+            pred_input_ids (torch.Tensor): Tokenized corrected sentences.
                 The shape is (num_batch, sequence_length)
-            src_attention_mask (torch.Tensor): The attention mask to handle padding.
+            pred_attention_mask (torch.Tensor): The attention mask to handle padding.
                 The shape is (num_batch, sequence_length)
         
         Returns:
