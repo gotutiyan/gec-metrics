@@ -112,10 +112,11 @@ print(scores)
 The output shape is (num_sents, num_systems, num_systems). Each element can be accessed using `[sent_id][sys_id1][sys_id2]` and takes a value of -1, 0, or 1. A value of -1 indicates that sys_id1 loses to sys_id2, 0 indicates a tie, and 1 indicates that sys_id1 wins against sys_id2
 
 ```python
+# Assume that there are three GEC systems
 hyps1 = gec_model1(sources)
 hyps2 = gec_model2(sources)
 hyps3 = gec_model3(sources)
-pair_scores: list[list[list[float]]] = metric.rank_pairwise(
+pair_scores: list[list[list[float]]] = metric.score_pairwise(
     sources,
     [hyps1, hyps2, hyps3],
     references

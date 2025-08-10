@@ -54,7 +54,7 @@ Meta-evaluation is often discussed at two levels: corpus-level and sentence-leve
 ### System-Level Meta-Evaluation
 
 System-level meta-evaluation is performed using `corr_system()`.
-This function compares system scores obtained from human evaluation with the evaluation results from `metric.rank_systems()`. You can control how the metric scores are calculated by specifying the `aggregation=` argument.
+This function compares system scores obtained from human evaluation with the evaluation results from `metric.rank_systems()`. You can control how the metric scores are calculated by specifying the `aggregation=` argument. [[Goto+ 25]](https://aclanthology.org/2025.acl-short.92/)'s experiments can be reproduced by comparing `aggregation="default"` and `aggregation="trueskill"`.
 
 The return value is a dedicated Output class. If the human evaluation includes multiple aspects, the correlations with all of them are calculated and returned.
 
@@ -104,7 +104,7 @@ The result will be like this:
 
 ### Pairwise analysis
 
-Pairwise analysis provides a more detailed examination of sentence-level meta-evaluation results. It groups the sentence-level meta-evaluation results based on human evaluation rank pairs and calculates the agreement rate within each group. This facilitates the analysis of trends, such as whether the metric demonstrates better agreement for pairs with larger differences in human evaluation ranks.
+Pairwise analysis provides a more detailed examination of sentence-level meta-evaluation results [[Sakai+ 25]](https://aclanthology.org/2025.findings-acl.1315/). It groups the sentence-level meta-evaluation results based on human evaluation rank pairs and calculates the agreement rate within each group. This facilitates the analysis of trends, such as whether the metric demonstrates better agreement for pairs with larger differences in human evaluation ranks.
 
 ```python
 from gec_metrics.meta_eval import MetaEvalSEEDA

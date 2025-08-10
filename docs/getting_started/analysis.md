@@ -4,7 +4,15 @@ The analysis module is defined for the purpose of further analysis of metrics. C
 
 ## Edit-level attribution
 
-To improve the explainability of metrics that only evaluate at the sentence level, sentence-level scores are attributed to individual edits. The calculated edit-level scores help visualize how sentence-level metrics account for each edit.
+[[Goto+ 25]](https://aclanthology.org/2025.acl-srw.77/) propose attributing sentence-level scores to individual edits, providing insight into how specific corrections contribute to the overall performance.  
+We assume that this is applied to reference-free metrics. The available classes are shown in the table below.
+
+|Class (`gec_metrics.analysis.<HERE>`)|ID (`gec_metrics.analysis.get_attributor(<HERE>)`)|Description|
+|:--|:--|:--|
+|AttributorAdd|`add`|One baseline attribution, which observes the change in the score when each edit is applied individually to the source sentence.|
+|AttributorSub|`sub`|One baseline attribution, which observes the change in the score when each edit is removed individually from the corrected sentence.|
+|AttributorShapley|`shapley`|Attribution based on Shapley values.|
+|AttributorShapleySampling|`shapleysampling`|Approximation of Shapley values using Shapley sampling values.|
 
 ```python
 from gec_metrics import get_metric

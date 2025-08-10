@@ -7,7 +7,8 @@ A library for evaluation of Grammatical Error Correction.
 </p>
 
 **[[API Docs]](https://gec-metrics.readthedocs.io/en/latest/index.html)**
-**[[Demo]](https://gec-metrics-app.streamlit.app)**
+**[[Demo]](https://gec-metrics-app.streamlit.app)**  
+**Our paper has been accepted to ACL 2025 Demonstration Track!: [https://aclanthology.org/2025.acl-demo.50/](https://aclanthology.org/2025.acl-demo.50/)**.
 
 # Install
 ```sh
@@ -230,6 +231,10 @@ metric = metric_cls(metric_cls.Config(
 ))
 ```
 
+For the QE model, these are available currently.
+- [gotutiyan/IMPARA-QE](https://huggingface.co/gotutiyan/IMPARA-QE) is an unofficial model, which is trained with the same settings as [[Maeda+ 22]](https://aclanthology.org/2022.coling-1.316/).
+- [naist-nlp/IMPARA-GED](https://huggingface.co/naist-nlp/IMPARA-GED) is the official model of [[Sakai+ 25]](https://aclanthology.org/2025.findings-acl.1315/). Note that you should use `pooling="mean"` for this model.
+
 ### LLM-S, LLM-E [[Kobayashi+24]](https://aclanthology.org/2024.bea-1.6/)
 - `llmkobayashi24` is a common prefix.
 - `llmkobayashi24hfsent` and `llmkobayashi24hfedit` is a huggingface model based LLM-S and LLM-E.
@@ -377,4 +382,27 @@ Basically, TrueSkill ranking is used to compute the correlation.
 from gec_metrics import get_meta_eval
 meta_cls = get_meta_eval('gjg')
 meta = meta_cls()
+```
+
+# Citation
+If you use our library, please cite:
+```bibtex
+@inproceedings{goto-etal-2025-gec,
+    title = "gec-metrics: A Unified Library for Grammatical Error Correction Evaluation",
+    author = "Goto, Takumi  and
+      Sakai, Yusuke  and
+      Watanabe, Taro",
+    editor = "Mishra, Pushkar  and
+      Muresan, Smaranda  and
+      Yu, Tao",
+    booktitle = "Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 3: System Demonstrations)",
+    month = jul,
+    year = "2025",
+    address = "Vienna, Austria",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2025.acl-demo.50/",
+    doi = "10.18653/v1/2025.acl-demo.50",
+    pages = "524--534",
+    ISBN = "979-8-89176-253-4",
+}
 ```
