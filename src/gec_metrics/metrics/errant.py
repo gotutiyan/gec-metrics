@@ -134,6 +134,59 @@ class ERRANT(MetricBaseForReferenceBased):
                     best_score = agg_score
             score += best_score
         return score
+
+    def score_corpus_etype(
+        self,
+        sources: list[str],
+        hypotheses: list[str],
+        references: list[list[str]],
+        cat: int = 2
+    ):
+        '''Calculate error-type-level scores.
+
+        Args:
+            sources (list[str]): Source sentence.
+                The shape is (num_sentences, )
+            hypotheses (list[str]): Corrected sentences.
+                The shape is (num_sentences, )
+            references (list[list[str]]): Reference sentences.
+                The shape is (num_references, num_sentences).
+            cat (int): Error type category.
+                By following the original ERRANT,
+                    cat=1: Operation: e.g. M, R, U
+                    cat=2: Main types: e.g. NOUN, VERB
+                    cat=3: All types: e.g. M:NOUN, R:VERB
+               
+        Returns:
+            dict[str, Score]: The error-type-level score.
+                Each key is an error type, and value is the Score instance.
+        '''
+        verbose_scores = self.score_base(
+            sources,
+            hypotheses,
+            references
+        )
+        score = self.Score(beta=self.config.beta)
+        etype_scores = dict()
+        for v_scores in verbose_scores:
+            best_score = None
+            best_v_score = None
+            # Identify the best reference
+            for v_score_for_ref in v_scores:  # reference loop
+                agg_score = self.aggregate_to_overall(v_score_for_ref)
+                if best_score is None or (score + best_score) < (score + agg_score):
+                    best_score = agg_score
+                    best_v_score = v_score_for_ref
+            # Now best_v_score is a dict, {etype: Score}
+            for etype in best_v_score.keys():
+                this_etype = etype
+                if cat == 1:
+                    this_etype = this_etype[0]  # E.g., R:NOUN -> R
+                elif cat == 2:
+                    this_etype = this_etype[2:]  # E.g., R:NOUN -> NOUN
+                etype_scores[this_etype] = etype_scores.get(this_etype, self.Score(beta=self.config.beta))
+                etype_scores[this_etype] += best_v_score[etype]  # Adding between Score instances
+        return etype_scores
         
     def score_sentence(
         self,
