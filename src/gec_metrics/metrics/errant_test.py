@@ -42,3 +42,16 @@ class TestERRANT:
         )
         assert [math.isclose(s1, s2, abs_tol=1e-9) \
                 for s1, s2 in zip(sent_score, gold_sent_score)]
+
+    def test_score_corpus_etype(self):
+        metric = ERRANT(ERRANT.Config())
+        score = metric.score_corpus_etype(SRCS, HYPS, REFS, cat=3)
+        score_cls = ERRANT.Score
+        assert score['R:NOUN:NUM'].__dict__ == score_cls(tp=1.).__dict__
+        assert score['R:VERB:SVA'].__dict__ == score_cls(tp=1.).__dict__
+        assert score['M:DET'].__dict__ == score_cls(tp=1.).__dict__
+        assert score['R:SPELL'].__dict__ == score_cls(fp=1.).__dict__
+        assert score['R:OTHER'].__dict__ == score_cls(fp=2., fn=1.).__dict__
+        assert score['R:VERB'].__dict__ == score_cls(fp=1.).__dict__
+        assert score['M:OTHER'].__dict__ == score_cls(fp=1.).__dict__
+        assert score['R:NOUN'].__dict__ == score_cls(fp=1.).__dict__
